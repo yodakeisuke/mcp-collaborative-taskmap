@@ -99,8 +99,7 @@ const calculatePathDuration = (
     return memo.get(taskId)!;
   }
 
-  const task = allTasks.get(taskId);
-  const taskDuration = task?.estimatedHours || 1; // Default to 1 hour if not estimated
+  const taskDuration = 1; // Default duration since estimatedHours field removed
 
   const dependencies = dependencyGraph.get(taskId) || new Set();
   if (dependencies.size === 0) {
@@ -151,16 +150,10 @@ const findCriticalPath = (
 
 /**
  * Calculate total estimated hours for a set of tasks
+ * NOTE: estimatedHours field was removed, always returns undefined
  */
-const calculateTotalHours = (
-  taskIds: PrTaskId[],
-  allTasks: Map<PrTaskId, PrTask>
-): number | undefined => {
-  const hours = taskIds.reduce((sum, taskId) => {
-    const task = allTasks.get(taskId);
-    return sum + (task?.estimatedHours || 0);
-  }, 0);
-  return hours > 0 ? hours : undefined;
+const calculateTotalHours = (): number | undefined => {
+  return undefined;
 };
 
 // =============================================================================
@@ -182,7 +175,7 @@ export const analyzeParallelism = (plan: WorkPlan): ParallelismAnalysis => {
   const criticalPath = findCriticalPath(allTasks, dependencyGraph);
   
   // Calculate estimated hours for critical path
-  const estimatedCriticalPathHours = calculateTotalHours(criticalPath, allTasks);
+  const estimatedCriticalPathHours = calculateTotalHours();
 
   return {
     parallelGroups: levels,

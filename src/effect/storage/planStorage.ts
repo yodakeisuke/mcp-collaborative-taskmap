@@ -47,7 +47,7 @@ const serializeDates = (obj: any): any => {
 
 const prepareWriteOperation = (plan: WorkPlan): Result<WriteOperation, StorageError> => {
   try {
-    const filePath = join(STORAGE_DIR, `${plan.id}.json`);
+    const filePath = join(STORAGE_DIR, 'current_plan.json');
     const serialized = serializeDates(plan);
     const content = JSON.stringify(serialized, null, 2);
     
@@ -95,3 +95,16 @@ export const savePlan = (plan: WorkPlan): ResultAsync<WorkPlan, StorageError> =>
       return executeWrite(operationResult.value);
     })
     .map(() => plan);
+
+export const loadCurrentPlan = (): ResultAsync<WorkPlan | null, StorageError> =>
+  ResultAsync.fromPromise(
+    fs.readFile(join(STORAGE_DIR, 'current_plan.json'), 'utf-8')
+      .then(content => JSON.parse(content) as WorkPlan)
+      .catch(error => {
+        if ((error as any).code === 'ENOENT') {
+          return null;
+        }
+        throw error;
+      }),
+    error => createStorageError('Failed to load current plan', error as Error)
+  );

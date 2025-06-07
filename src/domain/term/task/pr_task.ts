@@ -55,7 +55,6 @@ type PrTaskUpdate = {
   description?: string;
   status?: PrTaskStatus;
   dependencies?: PrTaskId[];
-  estimatedHours?: number;
 };
 
 export type PrTask = {
@@ -68,9 +67,6 @@ export type PrTask = {
   readonly acceptanceCriteria: readonly AcceptanceCriterion[];
   readonly definitionOfReady: readonly string[];
   readonly assignedTo?: AgentId;
-  readonly estimatedHours?: number;
-  readonly createdAt: Date;
-  readonly updatedAt: Date;
 };
 
 type PrTaskError = {
@@ -108,8 +104,7 @@ const updatePrTaskStatus: UpdatePrTaskStatus = (task, newStatus) =>
   mustAllowStatusTransition(task.status, newStatus)
     ? ok({
         ...task,
-        status: newStatus,
-        updatedAt: new Date()
+        status: newStatus
       })
     : err([PrTaskError.create('InvalidStatusTransition', 
         `Cannot transition from ${PrTaskStatus.toString(task.status)} to ${PrTaskStatus.toString(newStatus)}`
@@ -125,9 +120,7 @@ const applyUpdate: ApplyUpdate = (task, update) => {
       ...updatedTask,
       title: update.title ?? task.title,
       description: update.description ?? task.description,
-      dependencies: update.dependencies ?? task.dependencies,
-      estimatedHours: update.estimatedHours ?? task.estimatedHours,
-      updatedAt: new Date()
+      dependencies: update.dependencies ?? task.dependencies
     }))
     .mapErr(errors => errors);
 };
@@ -148,7 +141,6 @@ const validatePrTaskParams = (params: RequestedPrTask): Result<RequestedPrTask, 
 };
 
 const createPrTask = (params: RequestedPrTask & { acceptanceCriteria: readonly AcceptanceCriterion[]; definitionOfReady: readonly string[] }): PrTask => {
-  const now = new Date();
   return {
     id: PrTaskId.generate(),
     title: params.title,
@@ -157,10 +149,7 @@ const createPrTask = (params: RequestedPrTask & { acceptanceCriteria: readonly A
     status: PrTaskStatus.toBeRefined(),
     dependencies: params.dependencies ?? [],
     acceptanceCriteria: params.acceptanceCriteria,
-    definitionOfReady: params.definitionOfReady,
-    estimatedHours: undefined,
-    createdAt: now,
-    updatedAt: now
+    definitionOfReady: params.definitionOfReady
   };
 };
 

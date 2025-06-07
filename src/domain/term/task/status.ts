@@ -5,6 +5,7 @@ export type PrTaskStatus =
   | { type: 'Implemented' }
   | { type: 'Reviewed' }
   | { type: 'QAPassed' }
+  | { type: 'Merged' }
   | { type: 'Blocked'; reason: string; since: Date }
   | { type: 'Abandoned'; reason: string; at: Date };
 
@@ -14,12 +15,13 @@ export const PrTaskStatus = {
   implemented: (): PrTaskStatus => ({ type: 'Implemented' }),
   reviewed: (): PrTaskStatus => ({ type: 'Reviewed' }),
   qaPassed: (): PrTaskStatus => ({ type: 'QAPassed' }),
+  merged: (): PrTaskStatus => ({ type: 'Merged' }),
   blocked: (reason: string, since?: Date): PrTaskStatus => ({ type: 'Blocked', reason, since: since ?? new Date() }),
   abandoned: (reason: string, at?: Date): PrTaskStatus => ({ type: 'Abandoned', reason, at: at ?? new Date() }),
 
   // Status transition validation
   canTransition: (from: PrTaskStatus, to: PrTaskStatus): boolean => {
-    if (from.type === 'QAPassed' || from.type === 'Abandoned') {
+    if (from.type === 'Merged' || from.type === 'Abandoned') {
       return false;
     }
 
@@ -27,19 +29,25 @@ export const PrTaskStatus = {
       return true;
     }
 
+    // ToBeRefined and Refined are accessible from any non-terminal state
+    if (to.type === 'ToBeRefined' || to.type === 'Refined') {
+      return true;
+    }
+
     const validTransitions: Record<string, string[]> = {
       'ToBeRefined': ['Refined'],
       'Refined': ['Implemented'],
-      'Implemented': ['Reviewed', 'ToBeRefined', 'Refined'],
-      'Reviewed': ['QAPassed', 'Implemented', 'ToBeRefined', 'Refined'],
-      'Blocked': ['ToBeRefined', 'Refined', 'Implemented', 'Reviewed'],
+      'Implemented': ['Reviewed'],
+      'Reviewed': ['QAPassed', 'Implemented'],
+      'QAPassed': ['Merged'],
+      'Blocked': ['Implemented', 'Reviewed'],
     };
 
     return validTransitions[from.type]?.includes(to.type) ?? false;
   },
 
   isTerminal: (status: PrTaskStatus): boolean => {
-    return status.type === 'QAPassed' || status.type === 'Abandoned';
+    return status.type === 'Merged' || status.type === 'Abandoned';
   },
 
   toString: (status: PrTaskStatus): string => {
@@ -54,6 +62,8 @@ export const PrTaskStatus = {
         return 'Reviewed';
       case 'QAPassed':
         return 'QA Passed';
+      case 'Merged':
+        return 'Merged';
       case 'Blocked':
         return `Blocked: ${status.reason}`;
       case 'Abandoned':

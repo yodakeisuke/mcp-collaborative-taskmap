@@ -157,28 +157,19 @@ const calculatePlanStats = (plan: WorkPlan) => {
   };
   const tasksByBranch: Record<string, number> = {};
 
-  let estimatedTotalHours = 0;
-  let hasEstimates = false;
-
   for (const task of plan.tasks) {
     // Count by status
     tasksByStatus[task.status.type] = (tasksByStatus[task.status.type] || 0) + 1;
     
     // Count by branch
     tasksByBranch[task.branch] = (tasksByBranch[task.branch] || 0) + 1;
-    
-    // Sum estimates
-    if (task.estimatedHours) {
-      estimatedTotalHours += task.estimatedHours;
-      hasEstimates = true;
-    }
   }
 
   return {
     totalTasks: plan.tasks.length,
     tasksByStatus,
     tasksByBranch,
-    estimatedTotalHours: hasEstimates ? estimatedTotalHours : undefined
+    // estimatedTotalHours removed
   };
 };
 

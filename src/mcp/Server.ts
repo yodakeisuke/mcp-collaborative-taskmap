@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { planTool } from './tool/plan/index.js';
+import { refinementTool } from './tool/refinement/index.js';
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -13,6 +14,14 @@ export function createServer(): McpServer {
     planTool.description,
     planTool.parameters,
     planTool.handler
+  );
+
+  // Register the refinement tool
+  server.tool(
+    refinementTool.name,
+    refinementTool.description,
+    refinementTool.parameters,
+    refinementTool.handler
   );
 
   return server;

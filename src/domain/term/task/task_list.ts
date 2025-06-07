@@ -29,7 +29,6 @@ type UpdateRequestedTask = {
   description?: string;
   status?: PrTaskStatus;
   dependencies?: PrTaskId[];
-  estimatedHours?: number;
 };
 
 // error path
