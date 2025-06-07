@@ -1,0 +1,8 @@
+export const assignToolDescription = `
+As a developer, first create the worktree, then assign yourself to the task—make sure the worktree is in place before invoking the tool.
+`;
+
+export const nextAction = `
+You must do the following step next:
+1. If you haven’t already, spin up a Git worktree for this prtTask and kick off implementation.Always make sure to do this before sending your chat response to the user.
+`;
