@@ -4,7 +4,6 @@ export type PrTaskStatus =
   | { type: 'Refined' }
   | { type: 'Implemented' }
   | { type: 'Reviewed' }
-  | { type: 'QAPassed' }
   | { type: 'Merged' }
   | { type: 'Blocked'; reason: string; since: Date }
   | { type: 'Abandoned'; reason: string; at: Date };
@@ -14,7 +13,6 @@ export const PrTaskStatus = {
   refined: (): PrTaskStatus => ({ type: 'Refined' }),
   implemented: (): PrTaskStatus => ({ type: 'Implemented' }),
   reviewed: (): PrTaskStatus => ({ type: 'Reviewed' }),
-  qaPassed: (): PrTaskStatus => ({ type: 'QAPassed' }),
   merged: (): PrTaskStatus => ({ type: 'Merged' }),
   blocked: (reason: string, since?: Date): PrTaskStatus => ({ type: 'Blocked', reason, since: since ?? new Date() }),
   abandoned: (reason: string, at?: Date): PrTaskStatus => ({ type: 'Abandoned', reason, at: at ?? new Date() }),
@@ -38,8 +36,7 @@ export const PrTaskStatus = {
       'ToBeRefined': ['Refined'],
       'Refined': ['Implemented'],
       'Implemented': ['Reviewed'],
-      'Reviewed': ['QAPassed', 'Implemented'],
-      'QAPassed': ['Merged'],
+      'Reviewed': ['Merged', 'Implemented'],
       'Blocked': ['Implemented', 'Reviewed'],
     };
 
@@ -60,8 +57,6 @@ export const PrTaskStatus = {
         return 'Implemented';
       case 'Reviewed':
         return 'Reviewed';
-      case 'QAPassed':
-        return 'QA Passed';
       case 'Merged':
         return 'Merged';
       case 'Blocked':

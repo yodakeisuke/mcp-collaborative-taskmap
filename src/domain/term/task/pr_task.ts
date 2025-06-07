@@ -17,8 +17,6 @@ type PrTaskState =
   | PrTask
   | PrTaskError[];
 
-// ID types
-export type AgentId = ID<'Agent'>;
 
 // eDSL
 type ConstructPrTask = (
@@ -33,6 +31,11 @@ type UpdatePrTaskStatus = (
 type ApplyUpdate = (
   task: PrTask,
   update: PrTaskUpdate
+) => Result<PrTask, PrTaskError[]>;
+
+type AssignWorktree = (
+  task: PrTask,
+  worktreeName: string
 ) => Result<PrTask, PrTaskError[]>;
 
 // --- data definitions ---
@@ -62,15 +65,16 @@ export type PrTask = {
   readonly title: string;
   readonly description: string;
   readonly branch: string;
+  readonly worktree: string;
   readonly status: PrTaskStatus;
   readonly dependencies: PrTaskId[];
   readonly acceptanceCriteria: readonly AcceptanceCriterion[];
   readonly definitionOfReady: readonly string[];
-  readonly assignedTo?: AgentId;
+  readonly assignedWorktree?: string;
 };
 
 type PrTaskError = {
-  type: 'InvalidTitle' | 'InvalidDescription' | 'InvalidId' | 'InvalidStatusTransition' | 'TaskCreationFailed' | 'AcceptanceCriteriaCreationFailed' | 'DefinitionOfReadyValidationFailed';
+  type: 'InvalidTitle' | 'InvalidDescription' | 'InvalidId' | 'InvalidStatusTransition' | 'TaskCreationFailed' | 'AcceptanceCriteriaCreationFailed' | 'DefinitionOfReadyValidationFailed' | 'InvalidWorktreeName';
   message: string;
 };
 
@@ -125,6 +129,14 @@ const applyUpdate: ApplyUpdate = (task, update) => {
     .mapErr(errors => errors);
 };
 
+const assignWorktree: AssignWorktree = (task, worktreeName) =>
+  mustHaveValidWorktreeName(worktreeName).length > 0
+    ? err(mustHaveValidWorktreeName(worktreeName))
+    : ok({
+        ...task,
+        assignedWorktree: worktreeName
+      });
+
 // error
 const PrTaskError = {
   create: (type: PrTaskError['type'], message: string): PrTaskError => ({ type, message })
@@ -146,6 +158,7 @@ const createPrTask = (params: RequestedPrTask & { acceptanceCriteria: readonly A
     title: params.title,
     description: params.description,
     branch: `feature/${params.id}`,
+    worktree: '',
     status: PrTaskStatus.toBeRefined(),
     dependencies: params.dependencies ?? [],
     acceptanceCriteria: params.acceptanceCriteria,
@@ -209,9 +222,17 @@ const mustHaveValidAcceptanceCriteria = (criteria: ReadonlyArray<RequestedAccept
 const mustAllowStatusTransition = (currentStatus: PrTaskStatus, newStatus: PrTaskStatus): boolean =>
   PrTaskStatus.canTransition(currentStatus, newStatus);
 
+const mustHaveValidWorktreeName = (worktreeName: string): PrTaskError[] => {
+  if (!worktreeName || worktreeName.trim().length === 0) {
+    return [PrTaskError.create('InvalidWorktreeName', 'Worktree name is required and cannot be empty')];
+  }
+  return [];
+};
+
 
 // --- API section ---
 export const PrTask = {
   create: constructPrTask,
-  applyUpdate
+  applyUpdate,
+  assignWorktree
 } as const;

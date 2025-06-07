@@ -1,11 +1,63 @@
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { ResultAsync } from 'neverthrow';
+import { Result, ResultAsync } from 'neverthrow';
 import { RefinementToolParameters, RefinementToolResponse } from './schema.js';
+import { nextAction } from "./prompt.js";
 import { toCallToolResult } from '../util.js';
-import { TaskAggregate } from '../../../domain/command/task/refinement.js';
+import { TaskAggregate, RefineTaskCommand } from '../../../domain/command/task/aggregate.js';
 import { loadCurrentPlan, savePlan } from '../../../effect/storage/planStorage.js';
 import { PrTaskStatus } from '../../../domain/term/task/status.js';
+import { PrTask } from '../../../domain/term/task/pr_task.js';
+import { WorkPlan } from '../../../domain/term/plan/work_plan.js';
 import { ID } from '../../../common/primitive.js';
+
+
+type HandlerError = {
+  type: 'PlanNotFound' | 'StorageError' | 'RefinementError';
+  message: string;
+};
+
+const createCommand = (plan: WorkPlan, args: RefinementToolParameters): RefineTaskCommand => ({
+  planId: ID.value(plan.id),
+  taskId: args.taskId,
+  updates: {
+    title: args.title,
+    description: args.description,
+    acceptanceCriteria: args.acceptanceCriteria,
+    definitionOfReady: args.definitionOfReady,
+    dependencies: args.dependencies
+  }
+});
+
+const executeRefinement = (plan: WorkPlan, command: RefineTaskCommand): Result<WorkPlan, HandlerError> =>
+  TaskAggregate.refineTask(plan, command)
+    .map(({ updatedPlan }) => updatedPlan)
+    .mapErr(error => ({ 
+      type: 'RefinementError' as const, 
+      message: TaskAggregate.toErrorMessage(error) 
+    }));
+
+const findTaskById = (plan: WorkPlan, taskId: string): PrTask | undefined =>
+  plan.tasks.find(t => ID.value(t.id) === taskId);
+
+const buildResponse = (task: PrTask): RefinementToolResponse => ({
+  taskId: ID.value(task.id),
+  title: task.title,
+  description: task.description,
+  status: PrTaskStatus.toString(task.status),
+  acceptanceCriteria: task.acceptanceCriteria.map(criterion => ({
+    scenario: criterion.scenario,
+    given: [...criterion.given],
+    when: [...criterion.when],
+    then: [...criterion.then]
+  })),
+  definitionOfReady: [...task.definitionOfReady],
+  dependencies: task.dependencies.map(dep => ID.value(dep))
+});
+
+const buildSuccessMessages = (task: PrTask): readonly [string, string] => ([
+  nextAction(task.title),
+  JSON.stringify(buildResponse(task), null, 2)
+]);
 
 export const refinementEntryPoint = (args: RefinementToolParameters): Promise<CallToolResult> => {
   return loadCurrentPlan()
@@ -20,30 +72,14 @@ export const refinementEntryPoint = (args: RefinementToolParameters): Promise<Ca
         );
       }
 
-      const command = {
-        planId: ID.value(plan.id),
-        taskId: args.taskId,
-        updates: {
-          title: args.title,
-          description: args.description,
-          acceptanceCriteria: args.acceptanceCriteria,
-          definitionOfReady: args.definitionOfReady,
-          dependencies: args.dependencies
-        }
-      };
-
-      const refinementResult = TaskAggregate.refineTask(plan, command);
+      const command = createCommand(plan, args);
+      const refinementResult = executeRefinement(plan, command);
       
       if (refinementResult.isErr()) {
-        return ResultAsync.fromSafePromise(
-          Promise.reject({ 
-            type: 'RefinementError' as const, 
-            message: TaskAggregate.toErrorMessage(refinementResult.error) 
-          })
-        );
+        return ResultAsync.fromSafePromise(Promise.reject(refinementResult.error));
       }
 
-      const { updatedPlan } = refinementResult.value;
+      const updatedPlan = refinementResult.value;
 
       return savePlan(updatedPlan)
         .mapErr(storageError => ({ 
@@ -51,35 +87,15 @@ export const refinementEntryPoint = (args: RefinementToolParameters): Promise<Ca
           message: `Failed to save plan: ${storageError.message}` 
         }))
         .map(() => {
-          const updatedTask = updatedPlan.tasks.find(t => ID.value(t.id) === args.taskId);
+          const updatedTask = findTaskById(updatedPlan, args.taskId);
           if (!updatedTask) {
             throw new Error('Task not found after update');
           }
-
-          const response: RefinementToolResponse = {
-            taskId: ID.value(updatedTask.id),
-            title: updatedTask.title,
-            description: updatedTask.description,
-            status: PrTaskStatus.toString(updatedTask.status),
-            acceptanceCriteria: updatedTask.acceptanceCriteria.map(criterion => ({
-              scenario: criterion.scenario,
-              given: [...criterion.given],
-              when: [...criterion.when],
-              then: [...criterion.then]
-            })),
-            definitionOfReady: [...updatedTask.definitionOfReady],
-            dependencies: updatedTask.dependencies.map(dep => ID.value(dep))
-          };
-
-          return [
-            `Task "${updatedTask.title}" has been refined successfully.`,
-            `Status: ${PrTaskStatus.toString(updatedTask.status)}`,
-            JSON.stringify(response, null, 2)
-          ] as const;
+          return buildSuccessMessages(updatedTask);
         });
     })
     .match(
-      ([message1, message2, jsonResponse]) => toCallToolResult([message1, message2, jsonResponse], false),
+      ([nextAction, jsonResponse]) => toCallToolResult([nextAction, jsonResponse], false),
       error => toCallToolResult([`Failed to refine task: ${error.message}`], true)
     );
 };

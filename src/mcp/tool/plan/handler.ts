@@ -1,7 +1,7 @@
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { ResultAsync } from 'neverthrow';
 import { PlanToolParameters, planViewToResponse } from './schema.js';
-import { forPlanCreated } from './prompt.js';
+import { nextAction } from './prompt.js';
 import { toCallToolResult } from '../util.js';
 import { PlanAggregate } from '../../../domain/command/plan/aggregate.js';
 import { planViewQueries } from '../../../domain/read/master_plan/index.js';
@@ -10,6 +10,7 @@ import { savePlan } from '../../../effect/storage/planStorage.js';
 export const planEntryPoint = (args: PlanToolParameters): Promise<CallToolResult> => {
   const commandResult = PlanAggregate.createPlan({
     name: args.name,
+    featureBranch: args.featureBranch,
     description: args.description,
     tasks: args.tasks.map(task => ({
       ...task,
@@ -26,7 +27,7 @@ export const planEntryPoint = (args: PlanToolParameters): Promise<CallToolResult
           Promise.resolve().then(() => {
             const planView = planViewQueries.fromPlan(event.plan);
             const response = planViewToResponse(planView);
-            return [forPlanCreated, JSON.stringify(response, null, 2)] as const;
+            return [nextAction, JSON.stringify(response, null, 2)] as const;
           }),
           error => ({ type: 'ViewError' as const, message: `Failed to build response: ${(error as Error).message}` })
         )

@@ -24,6 +24,7 @@ type ConstructWorkPlan = (
 // --- data definitions ---
 export type RequestedWorkPlan = {
     name: string;
+    featureBranch: string;
     description?: string;
     tasks: Array<{
         id: string;
@@ -43,6 +44,7 @@ export type RequestedWorkPlan = {
 export type WorkPlan = {
     readonly id: WorkPlanId;
     readonly name: string;
+    readonly featureBranch: string;
     readonly description?: string;
     readonly tasks: readonly PrTask[];
     readonly createdAt: Date;
@@ -116,6 +118,7 @@ const createWorkPlan = (params: RequestedWorkPlan, tasks: PrTask[]): WorkPlan =>
   return {
     id: generateWorkPlanId(),
     name: params.name,
+    featureBranch: params.featureBranch,
     description: params.description,
     tasks,
     createdAt: now,

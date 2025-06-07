@@ -33,6 +33,7 @@ type UpdateTasksCommand = (
 // --- data definitions ---
 type CreatePlanRequested = {
   name: string;
+  featureBranch: string;
   description?: string;
   tasks: Array<{
     id: string;

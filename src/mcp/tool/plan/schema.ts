@@ -14,6 +14,7 @@ const acceptanceCriterionSchema = z.object({
 
 const planToolZodSchema = z.object({
   name: z.string().min(3).describe("Name of the development plan"),
+  featureBranch: z.string().min(1).describe("Feature branch name"),
   description: z.string().optional().describe("Optional description of the overall plan"),
   tasks: z.array(z.object({
     id: z.string().min(1).describe("Unique identifier for this task"),
@@ -35,6 +36,7 @@ export const planParams = planToolZodSchema.shape; // SDKが求める型
 export type PlanToolResponse = {
   id: string;
   name: string;
+  featureBranch: string;
   description?: string;
   // Tasks are organized by lines for display purposes
   lines: Array<{
@@ -44,6 +46,7 @@ export type PlanToolResponse = {
       id: string;
       title: string;
       description: string;
+      worktree: string;
       status: string;
       dependencies: string[];
       acceptanceCriteria: Array<{
@@ -56,7 +59,7 @@ export type PlanToolResponse = {
         createdAt: string;
       }>;
       definitionOfReady: string[];
-      assignedTo?: string;
+      assignedWorktree?: string;
     }>;
   }>;
 };
@@ -65,6 +68,7 @@ export const planViewToResponse = (view: PlanView): PlanToolResponse => {
   return {
     id: view.plan.id,
     name: view.plan.name,
+    featureBranch: view.plan.featureBranch,
     description: view.plan.description,
     lines: view.lines.map(line => ({
       id: line.id,
@@ -73,6 +77,7 @@ export const planViewToResponse = (view: PlanView): PlanToolResponse => {
         id: task.id,
         title: task.title,
         description: task.description,
+        worktree: task.worktree,
         status: task.status.type,
         dependencies: task.dependencies,
         acceptanceCriteria: task.acceptanceCriteria.map(criterion => ({
@@ -85,7 +90,7 @@ export const planViewToResponse = (view: PlanView): PlanToolResponse => {
           createdAt: criterion.createdAt.toISOString()
         })),
         definitionOfReady: [...task.definitionOfReady],
-        assignedTo: task.assignedTo
+        assignedWorktree: task.assignedWorktree
       }))
     }))
   };

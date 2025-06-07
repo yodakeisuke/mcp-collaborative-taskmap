@@ -6,7 +6,7 @@
 ## 実装タスク
 
 ### 1. Domain Layer - リファインメント操作の実装
-**ファイル**: `src/domain/command/task/refinement.ts`
+**ファイル**: `src/domain/command/task/aggregate.ts`
 
 #### 1.1 コマンド定義
 ```typescript
