@@ -1,58 +1,178 @@
 import { WorkPlan } from '../../term/plan/work_plan.js';
 import { PlanEvent } from '../../command/plan/events.js';
-import { LineView, PlanViewStats } from './types.js';
-import { LineId } from './types.js';
 import { PrTask } from '../../term/task/pr_task.js';
+import { StatusCompletionCheck } from '../../term/task/status.js';
+import { 
+  LineView, 
+  LineId, 
+  LineState, 
+  LineExecutability,
+  CorePlanStats, 
+  ParallelExecutionStats 
+} from './types.js';
 
 // =============================================================================
-// Event → State Projection Operations
+// Event Projections (Minimal)
 // =============================================================================
 
-const eventProjections = {
-  /**
-   * Apply events to reconstruct current state with complete event replay
-   */
-  projectPlanState: (events: PlanEvent[]): WorkPlan | null => {
-    let currentPlan: WorkPlan | null = null;
-    
-    for (const event of events) {
-      switch (event.type) {
-        case 'PlanCreated':
-          currentPlan = event.plan;
-          break;
-          
-        case 'PlanUpdated':
-          currentPlan = event.plan;
-          break;
-          
-        case 'TaskStatusChanged':
-          if (currentPlan) {
-            currentPlan = updateTaskStatusInPlan(currentPlan, event.taskId, event.newStatus);
-          }
-          break;
-          
-        case 'TasksAdded':
-          if (currentPlan) {
-            currentPlan = addTasksToPlan(currentPlan, event.taskIds);
-          }
-          break;
-          
-        case 'DependenciesChanged':
-          if (currentPlan) {
-            currentPlan = updateTaskDependenciesInPlan(currentPlan, event.taskId, event.newDeps);
-          }
-          break;
-          
-        default:
-          throw new Error(`Unhandled event type: ${event satisfies never}`);
-      }
+export const projectPlanFromEvents = (events: PlanEvent[]): WorkPlan | null => {
+  let currentPlan: WorkPlan | null = null;
+  
+  for (const event of events) {
+    switch (event.type) {
+      case 'PlanCreated':
+        currentPlan = event.plan;
+        break;
+      case 'PlanUpdated':
+        currentPlan = event.plan;
+        break;
+      case 'TaskStatusChanged':
+        if (currentPlan) {
+          currentPlan = updateTaskStatusInPlan(currentPlan, event.taskId, event.newStatus);
+        }
+        break;
+      case 'TasksAdded':
+        if (currentPlan) {
+          currentPlan = addTasksToPlan(currentPlan, event.taskIds);
+        }
+        break;
+      case 'DependenciesChanged':
+        if (currentPlan) {
+          currentPlan = updateTaskDependenciesInPlan(currentPlan, event.taskId, event.newDeps);
+        }
+        break;
+      default:
+        throw new Error(`Unhandled event type: ${event satisfies never}`);
     }
-    
-    return currentPlan;
   }
-} as const;
+  
+  return currentPlan;
+};
 
-// Helper functions for state reconstruction
+// =============================================================================
+// Line Projections (Minimal)
+// =============================================================================
+
+export const deriveLineViewsFromPlan = (plan: WorkPlan): LineView[] => {
+  const tasksByBranch = groupTasksByBranch(plan.tasks);
+  const lines = createLinesFromTaskGroups(tasksByBranch);
+  const linesWithDependencies = calculateLineDependencies(lines, plan.tasks);
+  
+  return linesWithDependencies.map(line => enrichLineWithAnalysis(line));
+};
+
+export const calculateLineExecutability = (
+  line: LineView, 
+  allLines: readonly LineView[]
+): LineExecutability => {
+  const completedDependencies = line.dependencies.filter(depId =>
+    allLines.find(l => l.id === depId)?.state.type === 'Completed'
+  );
+  
+  const isExecutable = completedDependencies.length === line.dependencies.length &&
+                      line.state.type !== 'Completed' &&
+                      line.state.type !== 'Abandoned';
+  
+  const isAssigned = line.tasks.some(task => task.assignedWorktree);
+  const isCompleted = line.state.type === 'Completed';
+  
+  const blockedBy = line.dependencies.filter(depId =>
+    allLines.find(l => l.id === depId)?.state.type !== 'Completed'
+  );
+  
+  return {
+    isExecutable,
+    isAssigned,
+    isCompleted,
+    blockedBy
+  };
+};
+
+export const isLineCompleted = (line: LineView): boolean => {
+  if (line.tasks.length === 0) return false;
+  return line.tasks.every(task => StatusCompletionCheck.isCompleted(task.status));
+};
+
+export const isLineExecutable = (line: LineView, completedLines: Set<LineId>): boolean => {
+  if (completedLines.has(line.id)) return false;
+  return line.dependencies.every(depId => completedLines.has(depId));
+};
+
+export const isLineUnassigned = (line: LineView): boolean => {
+  if (line.tasks.length === 0) return true;
+  return line.tasks.every(task => !task.assignedWorktree);
+};
+
+export const getCompletedLineIds = (lines: readonly LineView[]): Set<LineId> => {
+  return new Set(
+    lines
+      .filter(line => isLineCompleted(line))
+      .map(line => line.id)
+  );
+};
+
+// =============================================================================
+// Stats Projections (Minimal)
+// =============================================================================
+
+export const calculateCorePlanStats = (plan: WorkPlan, lines: readonly LineView[]): CorePlanStats => {
+  const tasksByStatus: Record<string, number> = {
+    'ToBeRefined': 0,
+    'Refined': 0,
+    'Implemented': 0,
+    'Reviewed': 0,
+    'Merged': 0,
+    'Blocked': 0,
+    'Abandoned': 0
+  };
+  const tasksByBranch: Record<string, number> = {};
+
+  for (const task of plan.tasks) {
+    tasksByStatus[task.status.type] = (tasksByStatus[task.status.type] || 0) + 1;
+    tasksByBranch[task.branch] = (tasksByBranch[task.branch] || 0) + 1;
+  }
+
+  return {
+    totalTasks: plan.tasks.length,
+    totalLines: lines.length,
+    tasksByStatus,
+    tasksByBranch
+  };
+};
+
+export const calculateParallelExecutionStats = (lines: readonly LineView[]): ParallelExecutionStats => {
+  const completedLines = getCompletedLineIds(lines);
+  
+  const executableLines = lines.filter(line => 
+    isLineExecutable(line, completedLines)
+  );
+  
+  const unassignedLines = lines.filter(line => 
+    isLineUnassigned(line)
+  );
+  
+  const executableUnassignedLines = executableLines.filter(line => 
+    isLineUnassigned(line)
+  );
+  
+  const blockedLines = lines.filter(line => 
+    line.state.type === 'Blocked' || 
+    (line.dependencies.length > 0 && !isLineExecutable(line, completedLines))
+  );
+
+  return {
+    executableLines: executableLines.length,
+    unassignedLines: unassignedLines.length,
+    executableUnassignedLines: executableUnassignedLines.length,
+    blockedLines: blockedLines.length,
+    completedLines: completedLines.size
+  };
+};
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
 const updateTaskStatusInPlan = (plan: WorkPlan, taskId: string, newStatus: string): WorkPlan => {
   const updatedTasks = plan.tasks.map(task => {
     if (task.id.toString() === taskId) {
@@ -92,111 +212,109 @@ const updateTaskDependenciesInPlan = (plan: WorkPlan, taskId: string, newDeps: s
   };
 };
 
-// Line derivation operations
-const lineProjections = {
-  /**
-   * Derive development lines from plan tasks
-   */
-  deriveFromPlan: (plan: WorkPlan): LineView[] => {
-    const tasksByBranch = new Map<string, PrTask[]>();
-    
-    for (const task of plan.tasks) {
-      const tasks = tasksByBranch.get(task.branch) || [];
-      tasks.push(task);
-      tasksByBranch.set(task.branch, tasks);
-    }
+const groupTasksByBranch = (tasks: readonly PrTask[]): Map<string, PrTask[]> => {
+  const tasksByBranch = new Map<string, PrTask[]>();
+  
+  for (const task of tasks) {
+    const tasks = tasksByBranch.get(task.branch) || [];
+    tasks.push(task);
+    tasksByBranch.set(task.branch, tasks);
+  }
+  
+  return tasksByBranch;
+};
 
-    const lines: LineView[] = [];
-    const branchToLineId = new Map<string, LineId>();
+const createLinesFromTaskGroups = (tasksByBranch: Map<string, PrTask[]>): LineView[] => {
+  const lines: LineView[] = [];
+  
+  for (const [branch, tasks] of tasksByBranch) {
+    const lineId = LineId.generate();
     
-    for (const [branch, tasks] of tasksByBranch) {
-      const lineId = LineId.generate();
-      branchToLineId.set(branch, lineId);
-      
-      lines.push({
-        id: lineId,
-        name: branch,
-        branch,
-        tasks,
-        dependencies: []
-      });
-    }
+    lines.push({
+      id: lineId,
+      name: branch,
+      branch,
+      tasks,
+      dependencies: [],
+      state: { type: 'NotStarted' },
+      executability: {
+        isExecutable: false,
+        isAssigned: false,
+        isCompleted: false,
+        blockedBy: []
+      }
+    });
+  }
+  
+  return lines;
+};
 
-    for (const line of lines) {
-      const lineDeps = new Set<LineId>();
-      
-      for (const task of line.tasks) {
-        for (const depTaskId of task.dependencies) {
-          const depTask = plan.tasks.find(t => t.id === depTaskId);
-          if (depTask && depTask.branch !== line.branch) {
-            const depLineId = branchToLineId.get(depTask.branch);
-            if (depLineId) {
-              lineDeps.add(depLineId);
-            }
+const calculateLineDependencies = (lines: LineView[], allTasks: readonly PrTask[]): LineView[] => {
+  const branchToLineId = new Map<string, LineId>();
+  
+  for (const line of lines) {
+    branchToLineId.set(line.branch, line.id);
+  }
+  
+  return lines.map(line => {
+    const lineDeps = new Set<LineId>();
+    
+    for (const task of line.tasks) {
+      for (const depTaskId of task.dependencies) {
+        const depTask = allTasks.find(t => t.id === depTaskId);
+        if (depTask && depTask.branch !== line.branch) {
+          const depLineId = branchToLineId.get(depTask.branch);
+          if (depLineId) {
+            lineDeps.add(depLineId);
           }
         }
       }
-      
-      line.dependencies = Array.from(lineDeps);
     }
-
-    return lines;
-  }
-} as const;
-
-// Helper function to calculate plan statistics
-const calculatePlanStats = (plan: WorkPlan) => {
-  const tasksByStatus: Record<string, number> = {
-    'ToBeRefined': 0,
-    'Refined': 0,
-    'Implemented': 0,
-    'Reviewed': 0,
-    'QAPassed': 0,
-    'Blocked': 0,
-    'Abandoned': 0
-  };
-  const tasksByBranch: Record<string, number> = {};
-
-  for (const task of plan.tasks) {
-    // Count by status
-    tasksByStatus[task.status.type] = (tasksByStatus[task.status.type] || 0) + 1;
     
-    // Count by branch
-    tasksByBranch[task.branch] = (tasksByBranch[task.branch] || 0) + 1;
-  }
+    return {
+      ...line,
+      dependencies: Array.from(lineDeps)
+    };
+  });
+};
 
+const enrichLineWithAnalysis = (line: LineView): LineView => {
+  const state = calculateLineState(line.tasks);
+  
   return {
-    totalTasks: plan.tasks.length,
-    tasksByStatus,
-    tasksByBranch,
-    // estimatedTotalHours removed
+    ...line,
+    state
   };
 };
 
-// Statistics calculation operations
-const statsProjections = {
-  /**
-   * Calculate comprehensive plan statistics
-   */
-  calculateFromPlanAndLines: (plan: WorkPlan, lines: LineView[]): PlanViewStats => {
-    const baseStats = calculatePlanStats(plan);
-    
-    const parallelizableLines = lines.filter(line => line.dependencies.length === 0).length;
-    
-    return {
-      ...baseStats,
-      totalLines: lines.length,
-      parallelizableLines,
-    };
+const calculateLineState = (tasks: readonly PrTask[]): LineState => {
+  if (tasks.length === 0) {
+    return { type: 'NotStarted' };
   }
-} as const;
-
-// =============================================================================
-// Public Projection API
-// =============================================================================
-
-export const projections = {
-  fromEvents: eventProjections.projectPlanState,
-  deriveLines: lineProjections.deriveFromPlan,
-  calculateStats: statsProjections.calculateFromPlanAndLines
-} as const;
+  
+  const completedTasks = tasks.filter(task => StatusCompletionCheck.isCompleted(task.status));
+  const abandonedTasks = tasks.filter(task => task.status.type === 'Abandoned');
+  const blockedTasks = tasks.filter(task => task.status.type === 'Blocked');
+  
+  if (completedTasks.length === tasks.length) {
+    return { type: 'Completed' };
+  }
+  
+  if (abandonedTasks.length > 0) {
+    return { type: 'Abandoned' };
+  }
+  
+  if (blockedTasks.length > 0) {
+    return { type: 'Blocked' };
+  }
+  
+  const startedTasks = tasks.filter(task => 
+    task.status.type !== 'ToBeRefined' && task.status.type !== 'Refined'
+  );
+  
+  if (startedTasks.length > 0) {
+    return { type: 'InProgress' };
+  }
+  
+  return { type: 'NotStarted' };
+};

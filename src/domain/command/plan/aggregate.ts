@@ -34,6 +34,7 @@ type UpdateTasksCommand = (
 type CreatePlanRequested = {
   name: string;
   featureBranch: string;
+  originWorktreePath: string;
   description?: string;
   tasks: Array<{
     id: string;

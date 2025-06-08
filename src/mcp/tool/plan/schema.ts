@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PlanView } from '../../../domain/read/master_plan/types.js';
+import { PlanView } from '../../../domain/read/master_plan/index.js';
 
 // --- request ---
 const acceptanceCriterionSchema = z.object({
@@ -15,6 +15,7 @@ const acceptanceCriterionSchema = z.object({
 const planToolZodSchema = z.object({
   name: z.string().min(3).describe("Name of the development plan"),
   featureBranch: z.string().min(1).describe("Feature branch name"),
+  originWorktreePath: z.string().min(1).describe("Path to the origin worktree where the feature branch exists"),
   description: z.string().optional().describe("Optional description of the overall plan"),
   tasks: z.array(z.object({
     id: z.string().min(1).describe("Unique identifier for this task"),
@@ -37,6 +38,7 @@ export type PlanToolResponse = {
   id: string;
   name: string;
   featureBranch: string;
+  originWorktreePath: string;
   description?: string;
   // Tasks are organized by lines for display purposes
   lines: Array<{
@@ -69,6 +71,7 @@ export const planViewToResponse = (view: PlanView): PlanToolResponse => {
     id: view.plan.id,
     name: view.plan.name,
     featureBranch: view.plan.featureBranch,
+    originWorktreePath: view.plan.originWorktreePath,
     description: view.plan.description,
     lines: view.lines.map(line => ({
       id: line.id,

@@ -4,6 +4,8 @@ import { refinementTool } from './tool/refinement/index.js';
 import { assignTool } from './tool/assign/index.js';
 import { reviewTool } from './tool/review/index.js';
 import { mergeTool } from './tool/merge/index.js';
+import { progressTool } from './tool/progress/index.js';
+import { trackTool } from './tool/track/index.js';
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -11,45 +13,24 @@ export function createServer(): McpServer {
     version: '0.0.1',
   });
 
-  // Register the plan tool
-  server.tool(
-    planTool.name,
-    planTool.description,
-    planTool.parameters,
-    planTool.handler
-  );
+  const tools = [
+    planTool,
+    trackTool,
+    assignTool,
+    refinementTool,
+    progressTool,
+    reviewTool,
+    mergeTool,
+  ];
 
-  // Register the assign tool
-  server.tool(
-      assignTool.name,
-      assignTool.description,
-      assignTool.parameters,
-      assignTool.handler
-  );
-
-  // Register the refinement tool
-  server.tool(
-    refinementTool.name,
-    refinementTool.description,
-    refinementTool.parameters,
-    refinementTool.handler
-  );
-
-  // Register the review tool
-  server.tool(
-    reviewTool.name,
-    reviewTool.description,
-    reviewTool.parameters,
-    reviewTool.handler
-  );
-
-  // Register the merge tool
-  server.tool(
-    mergeTool.name,
-    mergeTool.description,
-    mergeTool.parameters,
-    mergeTool.handler
-  );
+  tools.forEach(tool => {
+    server.tool(
+      tool.name,
+      tool.description,
+      tool.parameters,
+      tool.handler
+    );
+  });
 
   return server;
 }

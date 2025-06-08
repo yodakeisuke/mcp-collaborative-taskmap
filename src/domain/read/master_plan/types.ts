@@ -3,8 +3,12 @@ import { PrTask } from '../../term/task/pr_task.js';
 import { ID, NonEmptyString } from '../../../common/primitive.js';
 import { Result } from 'neverthrow';
 
-// ID types
+// =============================================================================
+// Minimal Core Types (Only Used)
+// =============================================================================
+
 export type LineId = ID<'Line'>;
+
 export const LineId = {
   create: (value: string): Result<LineId, string> => {
     return NonEmptyString.from(value)
@@ -16,33 +20,77 @@ export const LineId = {
   value: (id: LineId): string => ID.value(id)
 } as const;
 
-// =============================================================================
-// Read Model Type Definitions
-// =============================================================================
+export type LineState = 
+  | { type: 'NotStarted' }
+  | { type: 'InProgress' }
+  | { type: 'Completed' }
+  | { type: 'Blocked' }
+  | { type: 'Abandoned' };
 
-// Snapshot state representation of a development line
+export type LineExecutability = {
+  isExecutable: boolean;
+  isAssigned: boolean;
+  isCompleted: boolean;
+  blockedBy: LineId[];
+};
+
 export type LineView = {
-  id: LineId;
-  name: string;
-  branch: string;
-  tasks: PrTask[];
-  dependencies: LineId[];
+  readonly id: LineId;
+  readonly name: string;
+  readonly branch: string;
+  readonly tasks: readonly PrTask[];
+  readonly dependencies: readonly LineId[];
+  readonly state: LineState;
+  readonly executability: LineExecutability;
 };
 
-// Current plan view (snapshot state)
-export type PlanView = {
-  plan: WorkPlan;
-  lines: LineView[];
-  stats: PlanViewStats;
-  lastUpdated: Date;
+// =============================================================================
+// Minimal Stats Types (Only Used)
+// =============================================================================
+
+export type CorePlanStats = {
+  readonly totalTasks: number;
+  readonly totalLines: number;
+  readonly tasksByStatus: Readonly<Record<string, number>>;
+  readonly tasksByBranch: Readonly<Record<string, number>>;
+  readonly estimatedTotalHours?: number;
 };
 
-export type PlanViewStats = {
-  totalTasks: number;
-  totalLines: number;
-  tasksByStatus: Record<string, number>;
-  tasksByBranch: Record<string, number>;
-  estimatedTotalHours?: number;
-  parallelizableLines: number;
-  criticalPathLength?: number;
+export type ParallelExecutionStats = {
+  readonly executableLines: number;
+  readonly unassignedLines: number;
+  readonly executableUnassignedLines: number;
+  readonly blockedLines: number;
+  readonly completedLines: number;
 };
+
+// =============================================================================
+// Minimal View Types (Only Used)
+// =============================================================================
+
+export type ViewConstructionConfig = {
+  readonly includeCompletedLines?: boolean;
+  readonly includeDetailedStats?: boolean;
+  readonly includeRecommendations?: boolean;
+  readonly maxAge?: number;
+  readonly cacheKey?: string;
+};
+
+export type BasePlanView = {
+  readonly plan: WorkPlan;
+  readonly lines: readonly LineView[];
+  readonly stats: CorePlanStats;
+  readonly lastUpdated: Date;
+};
+
+export type TrackingPlanView = {
+  readonly plan: WorkPlan;
+  readonly lines: readonly LineView[];
+  readonly stats: CorePlanStats & {
+    readonly parallelExecutionStats: ParallelExecutionStats;
+  };
+  readonly lastUpdated: Date;
+};
+
+// Legacy compatibility
+export type PlanView = BasePlanView;

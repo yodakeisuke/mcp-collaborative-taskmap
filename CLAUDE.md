@@ -86,6 +86,29 @@ cd ../<task-dir> && claude
 git worktree remove ../<task-dir>
 ```
 
+## Front end design
+you MUST follow: 
+- .cursor/rules/frontend-design.mdc
+
+## Use Scratchpad & Checklist Organization System
+### Directory Structure
+```text
+.claude/
+├── work/                # Active work files
+│   ├── checklists/      # Task tracking files
+│   │   ├── active/      # Currently being worked on
+│   │   └── archive/     # Completed (kept for reference)
+│   ├── scratchpads/     # Temporary working files
+│   │   ├── findings/    # Research and analysis results
+│   │   ├── plans/       # Implementation plans
+│   │   └── temp/        # Very temporary files (auto-cleaned)
+│   └── agents/          # Inter-agent communication
+│       ├── shared/      # Shared findings between agents
+│       └── handoffs/    # Task handoff files
+├── templates/           # Reusable templates
+└── logs/                # Historical records
+```
+
 ## Memories
 - Delete unnecessary comments
 - Never leave legacy code for backward compatibility

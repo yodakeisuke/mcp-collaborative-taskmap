@@ -5,6 +5,7 @@ import { PrTask } from '../../term/task/pr_task.js';
 import { PrTaskStatus } from '../../term/task/status.js';
 import { AcceptanceCriterion } from '../../term/task/acceptance_criterion.js';
 import { ID } from '../../../common/primitive.js';
+import { Progress, ProgressUpdateRequest, ProgressError } from '../../term/task/progress.js';
 
 /**
  * 語彙「タスク集約」
@@ -12,7 +13,7 @@ import { ID } from '../../../common/primitive.js';
  * 
  * Task単体に対するすべての変更操作を管理する集約
  * - refinement: タスクのリファインメント
- * - (将来的に他のコマンドも追加予定)
+ * - progress: タスクの進捗更新
  */
 
 // --- type modeling section ---
@@ -45,6 +46,34 @@ type TaskRefinedEvent = {
 type RefinementError =
   | { type: 'TaskNotFound'; taskId: string }
   | { type: 'ValidationError'; message: string };
+
+type UpdateProgressCommand = {
+  planId: string;
+  taskId: string;
+  criteriaUpdates: Array<{
+    id: string;
+    completed: boolean;
+  }>;
+};
+
+type ProgressUpdatedEvent = {
+  type: 'ProgressUpdated';
+  planId: string;
+  taskId: string;
+  previousStatus: PrTaskStatus;
+  newStatus: PrTaskStatus;
+  progress: {
+    completed: number;
+    total: number;
+    percentage: number;
+  };
+  updatedAt: Date;
+};
+
+type ProgressUpdateError =
+  | { type: 'TaskNotFound'; taskId: string }
+  | { type: 'InvalidStatus'; message: string }
+  | { type: 'CriteriaNotFound'; message: string };
 
 // --- implementation section ---
 type RefineTaskInPlan = (
@@ -131,6 +160,63 @@ const refineTaskInPlan: RefineTaskInPlan = (plan, command) => {
   return ok({ event, updatedPlan });
 };
 
+type UpdateProgressInPlan = (
+  plan: WorkPlan,
+  command: UpdateProgressCommand
+) => Result<{ event: ProgressUpdatedEvent; updatedPlan: WorkPlan }, ProgressUpdateError>;
+
+const updateProgressInPlan: UpdateProgressInPlan = (plan, command) => {
+  const task = plan.tasks.find(t => ID.value(t.id) === command.taskId);
+  
+  if (!task) {
+    return err(ProgressUpdateError.taskNotFound(command.taskId));
+  }
+
+  const previousStatus = task.status;
+  
+  const progressResult = Progress.update(task, {
+    criteriaUpdates: command.criteriaUpdates
+  });
+  
+  if (progressResult.isErr()) {
+    const errors = progressResult.error;
+    const firstError = errors[0];
+    
+    switch (firstError.type) {
+      case 'InvalidStatus':
+        return err(ProgressUpdateError.invalidStatus(firstError.message));
+      case 'CriteriaNotFound':
+        return err(ProgressUpdateError.criteriaNotFound(firstError.message));
+      default:
+        throw new Error(`Unknown progress error type: ${(firstError as any).type}`);
+    }
+  }
+  
+  const { updatedTask, progress } = progressResult.value;
+  
+  const event: ProgressUpdatedEvent = {
+    type: 'ProgressUpdated',
+    planId: command.planId,
+    taskId: command.taskId,
+    previousStatus,
+    newStatus: updatedTask.status,
+    progress: {
+      completed: progress.completed,
+      total: progress.total,
+      percentage: progress.percentage
+    },
+    updatedAt: new Date()
+  };
+  
+  const updatedPlan: WorkPlan = {
+    ...plan,
+    tasks: plan.tasks.map(t => ID.value(t.id) === command.taskId ? updatedTask : t),
+    updatedAt: new Date()
+  };
+  
+  return ok({ event, updatedPlan });
+};
+
 // error handling
 const RefinementError = {
   taskNotFound: (taskId: string): RefinementError => ({
@@ -156,15 +242,56 @@ const RefinementError = {
   }
 } as const;
 
+const ProgressUpdateError = {
+  taskNotFound: (taskId: string): ProgressUpdateError => ({
+    type: 'TaskNotFound',
+    taskId
+  }),
+  
+  invalidStatus: (message: string): ProgressUpdateError => ({
+    type: 'InvalidStatus',
+    message
+  }),
+  
+  criteriaNotFound: (message: string): ProgressUpdateError => ({
+    type: 'CriteriaNotFound',
+    message
+  }),
+  
+  toString: (error: ProgressUpdateError): string => {
+    switch (error.type) {
+      case 'TaskNotFound':
+        return `Task not found: ${error.taskId}`;
+      case 'InvalidStatus':
+        return error.message;
+      case 'CriteriaNotFound':
+        return error.message;
+      default:
+        throw new Error(`Unknown error type: ${error satisfies never}`);
+    }
+  }
+} as const;
+
 // --- API section ---
 /**
  * @aggregate TaskAggregate: Task単体に対するすべての変更操作を管理
  * @command refineTask: タスクをリファインメントする
- * @utility toErrorMessage: エラーをユーザー向けメッセージに変換
+ * @command updateProgress: タスクの進捗を更新する
+ * @utility toRefinementErrorMessage: リファインメントエラーをユーザー向けメッセージに変換
+ * @utility toProgressErrorMessage: 進捗更新エラーをユーザー向けメッセージに変換
  */
 export const TaskAggregate = {
   refineTask: refineTaskInPlan,
-  toErrorMessage: RefinementError.toString
+  updateProgress: updateProgressInPlan,
+  toRefinementErrorMessage: RefinementError.toString,
+  toProgressErrorMessage: ProgressUpdateError.toString
 } as const;
 
-export type { RefineTaskCommand, TaskRefinedEvent, RefinementError };
+export type { 
+  RefineTaskCommand, 
+  TaskRefinedEvent, 
+  RefinementError,
+  UpdateProgressCommand,
+  ProgressUpdatedEvent,
+  ProgressUpdateError
+};

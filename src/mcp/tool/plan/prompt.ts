@@ -1,13 +1,13 @@
-export const nextAction =  `You must do the following:
-1. Visualize the current plan for users as a single execution-line diagram in Mermaid.
+export const nextAction =   `
+You MUST do the following step next:
+    1. Visualize the current plan for users as a single execution-line diagram in Mermaid.
+    2. In your personal worktree, branch off your working branch from the feature branch and switch to it.
+       You have to do it!: \`git switch -c <your-branch-name> <origin-develop-branch>\`
+    3. Assign yourself the task that best fits your role.
 `
 
-export const toolDescription = `As a seasoned tech lead, craft a finely sliced implementation roadmap
+export const toolDescription = `
+As a tech lead with deep expertise in BDD and event-centric Domain-Driven Design, craft a finely sliced implementation roadmap
 made up of bite-sized pull requests designed to maximize developer parallelism—
-the smaller each PR, the better.`;
-
-const backup =  `You must do the following step next:
-1. Visualize the current plan for users as a single execution-line diagram in Mermaid.
-2. If you haven’t already, create a feature branch.
-3. Assign yourself the task that best fits your role.
-`
+the smaller each PR, the better.
+`;

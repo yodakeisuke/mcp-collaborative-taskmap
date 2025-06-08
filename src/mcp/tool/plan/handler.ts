@@ -4,13 +4,14 @@ import { PlanToolParameters, planViewToResponse } from './schema.js';
 import { nextAction } from './prompt.js';
 import { toCallToolResult } from '../util.js';
 import { PlanAggregate } from '../../../domain/command/plan/aggregate.js';
-import { planViewQueries } from '../../../domain/read/master_plan/index.js';
+import { planViewQueries_legacy as planViewQueries } from '../../../domain/read/master_plan/index.js';
 import { savePlan } from '../../../effect/storage/planStorage.js';
 
 export const planEntryPoint = (args: PlanToolParameters): Promise<CallToolResult> => {
   const commandResult = PlanAggregate.createPlan({
     name: args.name,
     featureBranch: args.featureBranch,
+    originWorktreePath: args.originWorktreePath,
     description: args.description,
     tasks: args.tasks.map(task => ({
       ...task,

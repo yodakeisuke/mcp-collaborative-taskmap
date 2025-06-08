@@ -1,7 +1,13 @@
 // =============================================================================
-// Master Plan Read Model - Unified Export
+// Master Plan Read Model - Minimal Exports (Only Used Code)
 // =============================================================================
 
-export type { PlanView, LineView, PlanViewStats } from './types.js';
-export { projections } from './projections.js';
-export { planViewQueries } from './queries.js';
+// Only export what is actually used
+export type { PlanView, TrackingPlanView } from './types.js';
+
+// Plan tool compatibility
+import { planViewQueries } from './queries.js';
+export const planViewQueries_legacy = planViewQueries;
+
+// Track tool  
+export { trackViewQueries } from './queries.js';

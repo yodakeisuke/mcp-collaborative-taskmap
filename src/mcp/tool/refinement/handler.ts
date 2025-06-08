@@ -33,7 +33,7 @@ const executeRefinement = (plan: WorkPlan, command: RefineTaskCommand): Result<W
     .map(({ updatedPlan }) => updatedPlan)
     .mapErr(error => ({ 
       type: 'RefinementError' as const, 
-      message: TaskAggregate.toErrorMessage(error) 
+      message: TaskAggregate.toRefinementErrorMessage(error) 
     }));
 
 const findTaskById = (plan: WorkPlan, taskId: string): PrTask | undefined =>

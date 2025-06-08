@@ -68,3 +68,21 @@ export const PrTaskStatus = {
     }
   }
 } as const;
+
+export const StatusCompletionCheck = {
+  isCompleted: (status: PrTaskStatus): boolean => {
+    switch (status.type) {
+      case 'Merged':
+        return true;
+      case 'ToBeRefined':
+      case 'Refined':
+      case 'Implemented':
+      case 'Reviewed':
+      case 'Blocked':
+      case 'Abandoned':
+        return false;
+      default:
+        throw new Error(`Unknown status type: ${status satisfies never}`);
+    }
+  }
+} as const;

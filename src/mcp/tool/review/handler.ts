@@ -76,7 +76,7 @@ export const reviewEntryPoint = (args: ReviewToolParameters): Promise<CallToolRe
     .match(
       ({ updatedTask, previousStatus }) => {
         const response = taskToReviewResponse(updatedTask, previousStatus);
-        return toCallToolResult([nextAction(updatedTask.title, updatedTask.status.type), JSON.stringify(response, null, 2)], false);
+        return toCallToolResult([nextAction(), JSON.stringify(response, null, 2)], false);
       },
       error => toCallToolResult([`Failed to review task: ${error.message}`], true)
     );
