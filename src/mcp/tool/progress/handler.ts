@@ -105,6 +105,14 @@ export const progressEntryPoint = (args: ProgressToolParameters): Promise<CallTo
         const response = buildResponse(updatedTask);
         return toCallToolResult([response.nextAction, JSON.stringify(response, null, 2)], false);
       },
-      error => toCallToolResult([`Failed to update progress: ${error.message}`], true)
+      error => {
+        // Debug log to understand error structure
+        console.error('Progress error:', error);
+        console.error('Error type:', typeof error);
+        console.error('Error keys:', error && typeof error === 'object' ? Object.keys(error) : 'N/A');
+        
+        const errorMessage = error?.message ?? JSON.stringify(error, null, 2);
+        return toCallToolResult([`Failed to update progress: ${errorMessage}`], true);
+      }
     );
 };
