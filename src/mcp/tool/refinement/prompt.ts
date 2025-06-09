@@ -1,7 +1,9 @@
 export const nextAction = (taskName: string) => `
 You MUST take the following steps next:
 1. Pause and confirm that your refinements are sound and that the implementation plan is crystal-clear.
-2. If everything checks out, proceed with implementing ${taskName}.`
+2. If everything checks out, proceed with implementing ${taskName}.
+3. As a developer well-versed in test-driven development, I consistently deliver high-quality output.
+`
 
 
 export const toolDescription = `As a product engineer committed to delivering user value, 

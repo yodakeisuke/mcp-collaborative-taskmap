@@ -10,5 +10,5 @@ You have to do it!: \`
     git worktree add -b <your-branch-name> worktrees/<your-branch-name>
     cd worktrees/<your-branch-name>
 \`
-3. 
+3. Understand and refine the task, and then break it down into more detailed steps.
 `;
