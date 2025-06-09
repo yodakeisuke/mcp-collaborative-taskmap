@@ -15,7 +15,10 @@ const createCommand = (plan: WorkPlan, args: ProgressToolParameters): UpdateProg
 });
 
 const findTaskById = (plan: WorkPlan, taskId: string) =>
-  plan.tasks.find(t => ID.value(t.id) === taskId);
+  plan.tasks.find(t => {
+    const currentTaskId = typeof t.id === 'string' ? t.id : ID.value(t.id);
+    return currentTaskId === taskId;
+  });
 
 const calculateProgress = (criteria: ReadonlyArray<{ isCompleted: boolean }>): ProgressToolResponse['task']['progress'] => {
   const total = criteria.length;
@@ -43,16 +46,16 @@ const determineNextAction = (task: { title: string; status: PrTaskStatus; accept
   }
 };
 
-const buildResponse = (task: { id: ID<'PrTask'>; title: string; status: PrTaskStatus; acceptanceCriteria: ReadonlyArray<{ id: string; scenario: string; isCompleted: boolean }> }): ProgressToolResponse => {
+const buildResponse = (task: any, nextActionText: string): ProgressToolResponse => {
   const progress = calculateProgress(task.acceptanceCriteria);
   
-  return {
-    nextAction: determineNextAction(task),
+  const response: ProgressToolResponse = {
+    nextAction: nextActionText,
     task: {
-      id: ID.value(task.id),
+      id: typeof task.id === 'string' ? task.id : ID.value(task.id),
       title: task.title,
       status: PrTaskStatus.toString(task.status),
-      acceptanceCriteria: task.acceptanceCriteria.map(criterion => ({
+      acceptanceCriteria: task.acceptanceCriteria.map((criterion: any) => ({
         id: criterion.id,
         scenario: criterion.scenario,
         isCompleted: criterion.isCompleted
@@ -60,6 +63,8 @@ const buildResponse = (task: { id: ID<'PrTask'>; title: string; status: PrTaskSt
       progress
     }
   };
+  
+  return response;
 };
 
 export const progressEntryPoint = (args: ProgressToolParameters): Promise<CallToolResult> => {
@@ -70,8 +75,11 @@ export const progressEntryPoint = (args: ProgressToolParameters): Promise<CallTo
     }))
     .andThen(plan => {
       if (!plan) {
-        return ResultAsync.fromSafePromise(
-          Promise.reject({ type: 'PlanNotFound' as const, message: 'No current plan found' })
+        return ResultAsync.fromSafePromise(Promise.resolve(null)).andThen(() => 
+          ResultAsync.fromPromise(
+            Promise.reject(new Error('No current plan found')),
+            () => ({ type: 'PlanNotFound' as const, message: 'No current plan found' })
+          )
         );
       }
 
@@ -79,10 +87,13 @@ export const progressEntryPoint = (args: ProgressToolParameters): Promise<CallTo
       const updateResult = TaskAggregate.updateProgress(plan, command);
       
       if (updateResult.isErr()) {
-        return ResultAsync.fromSafePromise(Promise.reject({ 
-          type: 'ProgressError' as const, 
-          message: TaskAggregate.toProgressErrorMessage(updateResult.error) 
-        }));
+        return ResultAsync.fromPromise(
+          Promise.reject(new Error(TaskAggregate.toProgressErrorMessage(updateResult.error))),
+          () => ({
+            type: 'ProgressError' as const,
+            message: TaskAggregate.toProgressErrorMessage(updateResult.error)
+          })
+        );
       }
 
       const { updatedPlan } = updateResult.value;
@@ -102,16 +113,21 @@ export const progressEntryPoint = (args: ProgressToolParameters): Promise<CallTo
     })
     .match(
       updatedTask => {
-        const response = buildResponse(updatedTask);
-        return toCallToolResult([response.nextAction, JSON.stringify(response, null, 2)], false);
+        try {
+          const nextAction = determineNextAction(updatedTask);
+          const response = buildResponse(updatedTask, nextAction);
+          const responseJson = JSON.stringify(response, null, 2);
+          return toCallToolResult([
+            response.nextAction,
+            responseJson
+          ], false);
+        } catch (error) {
+          console.error('JSON serialization error:', error);
+          return toCallToolResult([`Failed to serialize response: ${error instanceof Error ? error.message : 'Unknown error'}`], true);
+        }
       },
       error => {
-        // Debug log to understand error structure
-        console.error('Progress error:', error);
-        console.error('Error type:', typeof error);
-        console.error('Error keys:', error && typeof error === 'object' ? Object.keys(error) : 'N/A');
-        
-        const errorMessage = error?.message ?? JSON.stringify(error, null, 2);
+        const errorMessage = error?.message ?? 'Unknown error occurred';
         return toCallToolResult([`Failed to update progress: ${errorMessage}`], true);
       }
     );

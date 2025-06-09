@@ -6,6 +6,7 @@ import { toCallToolResult } from '../util.js';
 import { PrTask } from '../../../domain/term/task/pr_task.js';
 import { PrTaskStatus } from '../../../domain/term/task/status.js';
 import { loadCurrentPlan, savePlan } from '../../../effect/storage/planStorage.js';
+import { ID } from '../../../common/primitive.js';
 
 export const reviewEntryPoint = (args: ReviewToolParameters): Promise<CallToolResult> => {
   return loadCurrentPlan()
@@ -19,7 +20,11 @@ export const reviewEntryPoint = (args: ReviewToolParameters): Promise<CallToolRe
       }
 
       // Find the task with the given taskId
-      const targetTask = plan.tasks.find(task => task.id === args.taskId);
+      const targetTask = plan.tasks.find(task => {
+        const currentTaskId = typeof task.id === 'string' ? task.id : ID.value(task.id);
+        return currentTaskId === args.taskId;
+      });
+      
       if (!targetTask) {
         return ResultAsync.fromSafePromise(Promise.reject({
           type: 'TaskNotFound' as const,
@@ -58,9 +63,10 @@ export const reviewEntryPoint = (args: ReviewToolParameters): Promise<CallToolRe
       const updatedTask = updateResult.value;
       
       // Update the plan with the reviewed task
-      const updatedTasks = plan.tasks.map(task => 
-        task.id === args.taskId ? updatedTask : task
-      );
+      const updatedTasks = plan.tasks.map(task => {
+        const currentTaskId = typeof task.id === 'string' ? task.id : ID.value(task.id);
+        return currentTaskId === args.taskId ? updatedTask : task;
+      });
       
       const updatedPlan = {
         ...plan,
@@ -75,8 +81,14 @@ export const reviewEntryPoint = (args: ReviewToolParameters): Promise<CallToolRe
     })
     .match(
       ({ updatedTask, previousStatus }) => {
-        const response = taskToReviewResponse(updatedTask, previousStatus);
-        return toCallToolResult([nextAction(), JSON.stringify(response, null, 2)], false);
+        try {
+          const response = taskToReviewResponse(updatedTask, previousStatus);
+          const responseJson = JSON.stringify(response, null, 2);
+          return toCallToolResult([nextAction(), responseJson], false);
+        } catch (error) {
+          console.error('JSON serialization error:', error);
+          return toCallToolResult([`Failed to serialize response: ${error instanceof Error ? error.message : 'Unknown error'}`], true);
+        }
       },
       error => toCallToolResult([`Failed to review task: ${error.message}`], true)
     );

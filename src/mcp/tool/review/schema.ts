@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { PrTask } from '../../../domain/term/task/pr_task.js';
+import { ID } from '../../../common/primitive.js';
 
 // --- request ---
 const reviewToolZodSchema = z.object({
@@ -28,18 +29,21 @@ export type ReviewToolResponse = {
 };
 
 export const taskToReviewResponse = (task: PrTask, previousStatus: string): ReviewToolResponse => {
+  const taskId = typeof task.id === 'string' ? task.id : ID.value(task.id);
+  const dependencies = task.dependencies.map(dep => typeof dep === 'string' ? dep : ID.value(dep));
+  
   return {
-    taskId: task.id,
-    previousStatus,
+    taskId: taskId,
+    previousStatus: previousStatus,
     currentStatus: task.status.type,
     task: {
-      id: task.id,
+      id: taskId,
       title: task.title,
       description: task.description,
       branch: task.branch,
       worktree: task.worktree,
       status: task.status.type,
-      dependencies: task.dependencies,
+      dependencies: dependencies,
       assignedWorktree: task.assignedWorktree
     }
   };
