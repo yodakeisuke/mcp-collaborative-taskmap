@@ -96,10 +96,23 @@ export const savePlan = (plan: WorkPlan): ResultAsync<WorkPlan, StorageError> =>
     })
     .map(() => plan);
 
+const deserializeDates = (obj: any): any => {
+  if (typeof obj === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/.test(obj)) {
+    return new Date(obj);
+  }
+  if (Array.isArray(obj)) return obj.map(deserializeDates);
+  if (obj && typeof obj === 'object') {
+    return Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [k, deserializeDates(v)])
+    );
+  }
+  return obj;
+};
+
 export const loadCurrentPlan = (): ResultAsync<WorkPlan | null, StorageError> =>
   ResultAsync.fromPromise(
     fs.readFile(join(STORAGE_DIR, 'current_plan.json'), 'utf-8')
-      .then(content => JSON.parse(content) as WorkPlan)
+      .then(content => deserializeDates(JSON.parse(content)) as WorkPlan)
       .catch(error => {
         if ((error as any).code === 'ENOENT') {
           return null;
