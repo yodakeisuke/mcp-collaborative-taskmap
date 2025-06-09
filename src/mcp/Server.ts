@@ -9,8 +9,14 @@ import { trackTool } from './tool/track/index.js';
 
 export function createServer(): McpServer {
   const server = new McpServer({
-    name: 'mcp-worktree',
+    name: 'collaborative-taskmap',
     version: '0.0.1',
+    description: `
+As a fully autonomous, top-tier full-cycle engineer, 
+I push development forward through constant self-reflection. 
+While sharing work plans with fellow developers, 
+I keep parallel streams moving smoothly by leveraging git worktree.
+    `,
   });
 
   const tools = [

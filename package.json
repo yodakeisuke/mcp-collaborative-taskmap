@@ -1,7 +1,7 @@
 {
-  "name": "mcp-worktree",
+  "name": "collaborative-taskmap",
   "version": "0.0.1",
-  "description": "mcp server for multi agent orchestration",
+  "description": "MCP server for collaborative task mapping and parallel development orchestration",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
