@@ -26,6 +26,8 @@ export type RequestedWorkPlan = {
     name: string;
     featureBranch: string;
     originWorktreePath: string;
+    evolvingPRDPath: string;
+    evolvingDesignDocPath: string;
     description?: string;
     tasks: Array<{
         id: string;
@@ -47,6 +49,8 @@ export type WorkPlan = {
     readonly name: string;
     readonly featureBranch: string;
     readonly originWorktreePath: string;
+    readonly evolvingPRDPath: string;
+    readonly evolvingDesignDocPath: string;
     readonly description?: string;
     readonly tasks: readonly PrTask[];
     readonly createdAt: Date;
@@ -122,6 +126,8 @@ const createWorkPlan = (params: RequestedWorkPlan, tasks: PrTask[]): WorkPlan =>
     name: params.name,
     featureBranch: params.featureBranch,
     originWorktreePath: params.originWorktreePath,
+    evolvingPRDPath: params.evolvingPRDPath,
+    evolvingDesignDocPath: params.evolvingDesignDocPath,
     description: params.description,
     tasks,
     createdAt: now,

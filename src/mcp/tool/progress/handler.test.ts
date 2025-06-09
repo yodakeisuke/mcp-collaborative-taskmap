@@ -54,6 +54,8 @@ describe('progressEntryPoint', () => {
     description: 'Test Plan Description',
     featureBranch: 'feature/test',
     originWorktreePath: '/test/path',
+    evolvingPRDPath: '/test/path/prd.md',
+    evolvingDesignDocPath: '/test/path/design.md',
     tasks,
     createdAt: new Date(),
     updatedAt: new Date()

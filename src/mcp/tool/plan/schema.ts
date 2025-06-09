@@ -16,6 +16,8 @@ const planToolZodSchema = z.object({
   name: z.string().min(3).describe("Name of the development plan"),
   featureBranch: z.string().min(1).describe("Feature branch name"),
   originWorktreePath: z.string().min(1).describe("Path to the origin worktree where the feature branch exists"),
+  evolvingPRDPath: z.string().min(1).describe("Path to the evolving PRD document"),
+  evolvingDesignDocPath: z.string().min(1).describe("Path to the evolving design document"),
   description: z.string().optional().describe("Optional description of the overall plan"),
   tasks: z.array(z.object({
     id: z.string().min(1).describe("Unique identifier for this task"),
@@ -39,6 +41,8 @@ export type PlanToolResponse = {
   name: string;
   featureBranch: string;
   originWorktreePath: string;
+  evolvingPRDPath: string;
+  evolvingDesignDocPath: string;
   description?: string;
   // Tasks are organized by lines for display purposes
   lines: Array<{
@@ -72,6 +76,8 @@ export const planViewToResponse = (view: PlanView): PlanToolResponse => {
     name: view.plan.name,
     featureBranch: view.plan.featureBranch,
     originWorktreePath: view.plan.originWorktreePath,
+    evolvingPRDPath: view.plan.evolvingPRDPath,
+    evolvingDesignDocPath: view.plan.evolvingDesignDocPath,
     description: view.plan.description,
     lines: view.lines.map(line => ({
       id: line.id,

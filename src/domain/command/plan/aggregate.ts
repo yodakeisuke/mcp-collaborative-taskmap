@@ -35,6 +35,8 @@ type CreatePlanRequested = {
   name: string;
   featureBranch: string;
   originWorktreePath: string;
+  evolvingPRDPath: string;
+  evolvingDesignDocPath: string;
   description?: string;
   tasks: Array<{
     id: string;

@@ -12,6 +12,8 @@ export const planEntryPoint = (args: PlanToolParameters): Promise<CallToolResult
     name: args.name,
     featureBranch: args.featureBranch,
     originWorktreePath: args.originWorktreePath,
+    evolvingPRDPath: args.evolvingPRDPath,
+    evolvingDesignDocPath: args.evolvingDesignDocPath,
     description: args.description,
     tasks: args.tasks.map(task => ({
       ...task,
