@@ -1,13 +1,24 @@
 {
-  "name": "collaborative-taskmap",
+  "name": "mcp-collaborative-taskmap",
   "version": "0.0.1",
   "description": "MCP server for collaborative task mapping and parallel development orchestration",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "mcp-collaborative-taskmap": "./bin/start.js"
+  },
+  "files": [
+    "dist/**/*",
+    "bin/**/*",
+    "human-ui/**/*"
+  ],
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
+    "dev:frontend": "cd human-ui && npm run dev",
+    "build": "tsc && cd human-ui && npm run build",
+    "build:frontend": "cd human-ui && npm run build",
+    "prepublishOnly": "npm run build",
+    "start:frontend": "cd human-ui && npm run preview",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
@@ -16,11 +27,14 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.12.1",
     "@types/uuid": "^10.0.0",
+    "express": "^5.1.0",
     "neverthrow": "^8.1.1",
+    "open": "^10.1.2",
     "uuid": "^11.1.0",
     "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
+    "@types/express": "^5.0.3",
     "@types/node": "^22.10.5",
     "@typescript-eslint/eslint-plugin": "^8.21.0",
     "@typescript-eslint/parser": "^8.21.0",
