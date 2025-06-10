@@ -3,6 +3,10 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
+// 設定定数
+const PROCESS_TERMINATION_TIMEOUT = 3000; // 3秒
+const CLEANUP_WAIT_TIME = 1000; // 1秒
+
 export class ProcessManager {
   private readonly port: number;
   private readonly managedProcesses = new Set<ChildProcess>();
@@ -17,19 +21,10 @@ export class ProcessManager {
   async cleanupExistingProcesses(): Promise<void> {
     try {
       console.log('🧹 Cleaning up existing processes...');
-      
-      // プロセス名でkill
-      await execAsync('pkill -f "simple-http-server.js" 2>/dev/null || true');
-      
-      // ポートでkill  
       await execAsync(`lsof -ti:${this.port} | xargs kill -9 2>/dev/null || true`);
-      
-      // 少し待つ
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise(resolve => setTimeout(resolve, CLEANUP_WAIT_TIME));
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.warn('⚠️  Cleanup warning:', errorMessage);
+      console.warn('⚠️  Cleanup warning:', this.getErrorMessage(error));
     }
   }
 
@@ -38,9 +33,7 @@ export class ProcessManager {
    */
   addManagedProcess(process: ChildProcess): void {
     this.managedProcesses.add(process);
-    
-    // プロセス終了時に管理対象から削除
-    process.on('exit', () => {
+    process.once('exit', () => {
       this.managedProcesses.delete(process);
     });
   }
@@ -49,36 +42,50 @@ export class ProcessManager {
    * 管理中の全プロセスを終了
    */
   async terminateAllProcesses(): Promise<void> {
+    if (this.managedProcesses.size === 0) return;
+
     console.log('🛑 Terminating managed processes...');
     
-    const termPromises = Array.from(this.managedProcesses).map(process => {
-      return new Promise<void>((resolve) => {
-        if (process.killed) {
-          resolve();
-          return;
-        }
-
-        // SIGTERM送信
-        process.kill('SIGTERM');
-        
-        // 5秒後に強制終了
-        const forceTimeout = setTimeout(() => {
-          if (!process.killed) {
-            console.log('⚡ Force killing process...');
-            process.kill('SIGKILL');
-          }
-          resolve();
-        }, 5000);
-
-        // プロセス終了を監視
-        process.on('exit', () => {
-          clearTimeout(forceTimeout);
-          resolve();
-        });
-      });
-    });
+    const termPromises = Array.from(this.managedProcesses).map(process => 
+      this.terminateProcess(process)
+    );
 
     await Promise.all(termPromises);
+    console.log('✅ All processes terminated');
+  }
+
+  /**
+   * 単一プロセスを終了
+   */
+  private terminateProcess(process: ChildProcess): Promise<void> {
+    return new Promise<void>((resolve) => {
+      if (process.killed) {
+        resolve();
+        return;
+      }
+
+      // SIGTERM送信
+      process.kill('SIGTERM');
+      
+      // タイムアウト後に強制終了
+      const forceTimeout = setTimeout(() => {
+        if (!process.killed) {
+          console.log('⚡ Force killing process:', process.pid);
+          try {
+            process.kill('SIGKILL');
+          } catch (error) {
+            console.warn('⚠️  Failed to kill process:', this.getErrorMessage(error));
+          }
+        }
+        resolve();
+      }, PROCESS_TERMINATION_TIMEOUT);
+
+      // プロセス終了を監視
+      process.once('exit', () => {
+        clearTimeout(forceTimeout);
+        resolve();
+      });
+    });
   }
 
   /**
@@ -88,8 +95,7 @@ export class ProcessManager {
     try {
       await execAsync(`lsof -ti:${this.port} | xargs kill -9 2>/dev/null || true`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.warn('⚠️  Port cleanup warning:', errorMessage);
+      console.warn('⚠️  Port cleanup warning:', this.getErrorMessage(error));
     }
   }
 
@@ -98,12 +104,9 @@ export class ProcessManager {
    */
   setupGracefulShutdown(): void {
     const gracefulShutdown = async (signal: string) => {
-      console.log(`\n🛑 ${signal} received. Stopping server...`);
+      console.log(`\n🛑 ${signal} received. Stopping all servers...`);
       
-      // 管理中のプロセスを終了
       await this.terminateAllProcesses();
-      
-      // ポートのクリーンアップ
       await this.cleanupPort();
       
       console.log('✅ Cleanup completed');
@@ -111,9 +114,9 @@ export class ProcessManager {
     };
 
     // シグナルハンドラーを設定
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
+    ['SIGINT', 'SIGTERM', 'SIGHUP'].forEach(signal => {
+      process.on(signal, () => gracefulShutdown(signal));
+    });
 
     // 未処理例外のハンドラー
     process.on('uncaughtException', async (error) => {
@@ -125,5 +128,12 @@ export class ProcessManager {
       console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
       await gracefulShutdown('UNHANDLED_REJECTION');
     });
+  }
+
+  /**
+   * エラーメッセージを統一的に取得
+   */
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
   }
 } 

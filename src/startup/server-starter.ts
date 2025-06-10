@@ -3,6 +3,11 @@ import { join } from 'path';
 import open from 'open';
 import { ProcessManager } from './process-manager.js';
 
+// 設定定数
+const MCP_SERVER_STARTUP_DELAY = 1000; // 1秒
+const EXPRESS_SERVER_STARTUP_DELAY = 2000; // 2秒  
+const BROWSER_OPEN_DELAY = 3000; // 3秒
+
 export class ServerStarter {
   private readonly projectRoot: string;
   private readonly port: number;
@@ -13,16 +18,50 @@ export class ServerStarter {
   }
 
   /**
-   * MCPサーバーを起動
+   * MCP serverを起動
    */
-  startServer(frontendDistPath: string, processManager: ProcessManager): Promise<ChildProcess> {
+  startMcpServer(processManager: ProcessManager): Promise<ChildProcess> {
     return new Promise((resolve, reject) => {
-      console.log(`📡 MCPサーバー: http://localhost:${this.port}`);
-      console.log(`🌐 フロントエンド: http://localhost:${this.port}`);
+      console.log('🔌 MCP Server starting...');
 
-      const serverProcess = spawn('node', [join(this.projectRoot, 'dist/simple-http-server.js')], {
+      const mcpServerProcess = spawn('node', [join(this.projectRoot, 'dist/index.js')], {
+        cwd: this.projectRoot,
+        stdio: ['pipe', 'pipe', 'inherit'],
+        detached: false,
+        env: { ...process.env }
+      });
+
+      processManager.addManagedProcess(mcpServerProcess);
+
+      mcpServerProcess.on('error', (error) => {
+        console.error('❌ MCP Server process error:', error);
+        reject(error);
+      });
+
+      mcpServerProcess.on('exit', (code) => {
+        if (code !== null && code !== 0) {
+          console.error(`❌ MCP Server exited with code: ${code}`);
+        }
+      });
+
+      setTimeout(() => {
+        console.log('✅ MCP Server started');
+        resolve(mcpServerProcess);
+      }, MCP_SERVER_STARTUP_DELAY);
+    });
+  }
+
+  /**
+   * Express server（フロントエンド配信用）を起動
+   */
+  startExpressServer(frontendDistPath: string, processManager: ProcessManager): Promise<ChildProcess> {
+    return new Promise((resolve, reject) => {
+      console.log(`📡 Express Server: http://localhost:${this.port}`);
+
+      const expressServerProcess = spawn('node', [join(this.projectRoot, 'dist/simple-http-server.js')], {
         cwd: this.projectRoot,
         stdio: 'inherit',
+        detached: false,
         env: { 
           ...process.env, 
           PORT: String(this.port),
@@ -30,32 +69,29 @@ export class ServerStarter {
         }
       });
 
-      // プロセス管理に登録
-      processManager.addManagedProcess(serverProcess);
+      processManager.addManagedProcess(expressServerProcess);
 
-      // エラーハンドリング
-      serverProcess.on('error', (error) => {
-        console.error('❌ Server process error:', error);
+      expressServerProcess.on('error', (error) => {
+        console.error('❌ Express Server process error:', error);
         reject(error);
       });
 
-      serverProcess.on('exit', (code) => {
+      expressServerProcess.on('exit', (code) => {
         if (code !== null && code !== 0) {
-          console.error(`❌ MCPサーバーがエラーで終了しました (code: ${code})`);
+          console.error(`❌ Express Server exited with code: ${code}`);
         }
       });
 
-      // 少し待ってから成功とみなす
       setTimeout(() => {
-        resolve(serverProcess);
-      }, 2000);
+        resolve(expressServerProcess);
+      }, EXPRESS_SERVER_STARTUP_DELAY);
     });
   }
 
   /**
    * ブラウザを開く
    */
-  async openBrowser(delay: number = 3000): Promise<void> {
+  async openBrowser(delay: number = BROWSER_OPEN_DELAY): Promise<void> {
     return new Promise((resolve) => {
       setTimeout(async () => {
         try {
@@ -63,8 +99,7 @@ export class ServerStarter {
           await open(`http://localhost:${this.port}`);
           resolve();
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          console.warn('⚠️  Failed to open browser:', errorMessage);
+          console.warn('⚠️  Failed to open browser:', this.getErrorMessage(error));
           resolve(); // ブラウザが開けなくても続行
         }
       }, delay);
@@ -72,20 +107,31 @@ export class ServerStarter {
   }
 
   /**
-   * サーバーとブラウザを起動
+   * MCP server + Express server + ブラウザを起動
    */
-  async start(frontendDistPath: string, processManager: ProcessManager): Promise<ChildProcess> {
+  async start(frontendDistPath: string, processManager: ProcessManager): Promise<{ mcpServer: ChildProcess; expressServer: ChildProcess }> {
     try {
-      // サーバー起動
-      const serverProcess = await this.startServer(frontendDistPath, processManager);
+      console.log('🚀 Starting MCP Collaborative TaskMap servers...');
+      
+      // 並列でサーバー起動
+      const [mcpServer, expressServer] = await Promise.all([
+        this.startMcpServer(processManager),
+        this.startExpressServer(frontendDistPath, processManager)
+      ]);
       
       // ブラウザを開く（非同期で実行）
       this.openBrowser();
       
-      return serverProcess;
+      return { mcpServer, expressServer };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`サーバー起動に失敗: ${errorMessage}`);
+      throw new Error(`サーバー起動に失敗: ${this.getErrorMessage(error)}`);
     }
+  }
+
+  /**
+   * エラーメッセージを統一的に取得
+   */
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
   }
 } 

@@ -14,11 +14,8 @@
   ],
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "dev:frontend": "cd human-ui && npm run dev",
     "build": "tsc && cd human-ui && npm run build",
-    "build:frontend": "cd human-ui && npm run build",
     "prepublishOnly": "npm run build",
-    "start:frontend": "cd human-ui && npm run preview",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
