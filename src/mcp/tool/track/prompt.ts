@@ -18,9 +18,9 @@ export const getNextActionForClient = (clientAgent: ClientAgent): string => {
     ? baseDiagramInstructions.mermaid 
     : baseDiagramInstructions.ascii;
   
-  return `${baseNextAction}
-
-**Visualization**: ${diagramInstruction}
+  return `
+    ${baseNextAction}
+    **Visualization**: ${diagramInstruction}
 `;
 };
 
