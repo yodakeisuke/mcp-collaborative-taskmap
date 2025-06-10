@@ -15,6 +15,8 @@ export type TrackToolResponse = {
   name: string;
   featureBranch: string;
   originWorktreePath: string;
+  evolvingPRDPath: string;
+  evolvingDesignDocPath: string;
   description?: string;
   // Tasks are organized by lines for display purposes
   lines: Array<{
@@ -65,6 +67,8 @@ export const trackViewToResponse = (view: TrackingPlanView): TrackToolResponse =
     name: view.plan.name,
     featureBranch: view.plan.featureBranch,
     originWorktreePath: view.plan.originWorktreePath,
+    evolvingPRDPath: view.plan.evolvingPRDPath,
+    evolvingDesignDocPath: view.plan.evolvingDesignDocPath,
     description: view.plan.description,
     lines: view.lines.map(line => ({
       id: line.id,

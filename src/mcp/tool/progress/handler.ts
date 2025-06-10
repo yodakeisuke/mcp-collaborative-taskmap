@@ -1,6 +1,7 @@
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { ResultAsync } from 'neverthrow';
 import { ProgressToolParameters, ProgressToolResponse } from './schema.js';
+import { nextAction } from './prompt.js';
 import { toCallToolResult } from '../util.js';
 import { loadCurrentPlan, savePlan } from '../../../effect/storage/planStorage.js';
 import { TaskAggregate, UpdateProgressCommand } from '../../../domain/command/task/aggregate.js';
@@ -11,7 +12,10 @@ import { ID } from '../../../common/primitive.js';
 const createCommand = (plan: WorkPlan, args: ProgressToolParameters): UpdateProgressCommand => ({
   planId: ID.value(plan.id),
   taskId: args.taskId,
-  criteriaUpdates: args.criteriaUpdates
+  criteriaUpdates: args.criteriaUpdates.map(update => ({
+    id: update.id,
+    completed: update.completed
+  }))
 });
 
 const findTaskById = (plan: WorkPlan, taskId: string) =>
@@ -28,23 +32,6 @@ const calculateProgress = (criteria: ReadonlyArray<{ isCompleted: boolean }>): P
   return { completed, total, percentage };
 };
 
-const determineNextAction = (task: { title: string; status: PrTaskStatus; acceptanceCriteria: ReadonlyArray<{ isCompleted: boolean }> }): string => {
-  const progress = calculateProgress(task.acceptanceCriteria);
-  
-  if (progress.percentage === 100) {
-    switch (task.status.type) {
-      case 'Implemented':
-        return `All acceptance criteria completed! Task "${task.title}" is ready for review.`;
-      case 'Refined':
-        return `All acceptance criteria completed! Task "${task.title}" has been automatically marked as Implemented.`;
-      default:
-        return `All acceptance criteria completed for task "${task.title}".`;
-    }
-  } else {
-    const remaining = progress.total - progress.completed;
-    return `Progress updated: ${progress.completed}/${progress.total} criteria completed (${progress.percentage}%). ${remaining} criteria remaining for task "${task.title}".`;
-  }
-};
 
 const buildResponse = (task: any, nextActionText: string): ProgressToolResponse => {
   const progress = calculateProgress(task.acceptanceCriteria);
@@ -65,6 +52,21 @@ const buildResponse = (task: any, nextActionText: string): ProgressToolResponse 
   };
   
   return response;
+};
+
+const generateProgressMessage = (task: any): string => {
+  const progress = calculateProgress(task.acceptanceCriteria);
+  
+  if (progress.percentage === 100) {
+    const status = PrTaskStatus.toString(task.status);
+    if (status === 'Implemented') {
+      return `All acceptance criteria completed! Task "${task.title}" is ready for review.`;
+    } else {
+      return `All acceptance criteria completed! Task "${task.title}" automatically marked as Implemented.`;
+    }
+  } else {
+    return `Progress updated: ${progress.completed}/${progress.total} criteria completed (${progress.percentage}%)`;
+  }
 };
 
 export const progressEntryPoint = (args: ProgressToolParameters): Promise<CallToolResult> => {
@@ -114,11 +116,11 @@ export const progressEntryPoint = (args: ProgressToolParameters): Promise<CallTo
     .match(
       updatedTask => {
         try {
-          const nextAction = determineNextAction(updatedTask);
-          const response = buildResponse(updatedTask, nextAction);
+          const progressMessage = generateProgressMessage(updatedTask);
+          const response = buildResponse(updatedTask, nextAction());
           const responseJson = JSON.stringify(response, null, 2);
           return toCallToolResult([
-            response.nextAction,
+            progressMessage,
             responseJson
           ], false);
         } catch (error) {
