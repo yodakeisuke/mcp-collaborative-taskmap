@@ -61,7 +61,7 @@ export type ProgressSummary = {
 };
 
 export type ProgressError = {
-  readonly type: 'InvalidStatus' | 'CriteriaNotFound';
+  readonly type: 'InvalidStatus' | 'CriteriaNotFound' | 'NotAssigned';
   readonly message: string;
 };
 
@@ -69,6 +69,7 @@ export type ProgressError = {
 // workflow
 const updateProgress: UpdateProgress = (task, request) => {
   const validationErrors = [
+    ...mustBeAssigned(task),
     ...mustBeInProgressableStatus(task.status),
     ...mustHaveValidCriteriaIds(task.acceptanceCriteria, request.criteriaUpdates)
   ];
@@ -129,6 +130,15 @@ const determineStatusTransition: DetermineStatusTransition = (currentStatus, all
 };
 
 // business rules
+const mustBeAssigned = (task: PrTask): ProgressError[] => {
+  return task.assignedWorktree && task.assignedWorktree.trim().length > 0
+    ? []
+    : [ProgressError.create(
+        'NotAssigned',
+        `Task must be assigned to a worktree before progress can be updated. Please assign the task first.`
+      )];
+};
+
 const mustBeInProgressableStatus = (status: PrTaskStatus): ProgressError[] => {
   const validStatuses = ['Refined', 'Implemented', 'Reviewed'];
   return validStatuses.includes(status.type)

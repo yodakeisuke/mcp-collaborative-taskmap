@@ -73,7 +73,8 @@ type ProgressUpdatedEvent = {
 type ProgressUpdateError =
   | { type: 'TaskNotFound'; taskId: string }
   | { type: 'InvalidStatus'; message: string }
-  | { type: 'CriteriaNotFound'; message: string };
+  | { type: 'CriteriaNotFound'; message: string }
+  | { type: 'NotAssigned'; message: string };
 
 // --- implementation section ---
 type RefineTaskInPlan = (
@@ -187,6 +188,8 @@ const updateProgressInPlan: UpdateProgressInPlan = (plan, command) => {
         return err(ProgressUpdateError.invalidStatus(firstError.message));
       case 'CriteriaNotFound':
         return err(ProgressUpdateError.criteriaNotFound(firstError.message));
+      case 'NotAssigned':
+        return err(ProgressUpdateError.notAssigned(firstError.message));
       default:
         throw new Error(`Unknown progress error type: ${(firstError as any).type}`);
     }
@@ -258,6 +261,11 @@ const ProgressUpdateError = {
     message
   }),
   
+  notAssigned: (message: string): ProgressUpdateError => ({
+    type: 'NotAssigned',
+    message
+  }),
+  
   toString: (error: ProgressUpdateError): string => {
     switch (error.type) {
       case 'TaskNotFound':
@@ -265,6 +273,8 @@ const ProgressUpdateError = {
       case 'InvalidStatus':
         return error.message;
       case 'CriteriaNotFound':
+        return error.message;
+      case 'NotAssigned':
         return error.message;
       default:
         throw new Error(`Unknown error type: ${error satisfies never}`);
