@@ -1,134 +1,275 @@
 # MCP Collaborative TaskMap
 
-MCP（Model Context Protocol）サーバーとReactフロントエンドを組み合わせた、協調的なタスクマッピングと並列開発オーケストレーションツールです。
+[![npm version](https://badge.fury.io/js/mcp-collaborative-taskmap.svg)](https://badge.fury.io/js/mcp-collaborative-taskmap)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 🚀 クイックスタート
+An MCP (Model Context Protocol) server combined with React frontend for collaborative task mapping and parallel development orchestration. Designed for solo developers managing multiple AI coding agents working in parallel across different feature branches.
 
-### NPXで即座に起動
+## 🚀 Quick Start
+
+### Instant Launch with NPX
 
 ```bash
 npx mcp-collaborative-taskmap
 ```
 
-このコマンドで以下が同時に起動します：
-- **MCP Server**: stdio通信でClaude/AIエージェントと連携
-- **Express Server**: Reactフロントエンド配信（ポート: 3737）
-- ブラウザが自動で開きます
+This command launches:
+- **MCP Server**: stdio communication with Claude/AI agents
+- **Express Server**: React frontend delivery (port: 3737) *(planned feature - UI under development)*
 
-### サーバーの停止方法
+### Stop Servers
 
 ```bash
-# 端末で Ctrl+C を押す
+# Press Ctrl+C in terminal
 ^C
 
-# または別の端末から強制終了
+# Or force kill from another terminal
 pkill -f mcp-collaborative-taskmap
 ```
 
-### 開発環境
+## 🎯 What Problem Does This Solve?
 
-```bash
-# 依存関係のインストール
-npm install
-cd human-ui && npm install
+When running multiple AI coding agents in parallel (Cursor, Claude Code, GPT-Dev, etc.), developers face:
 
-# 両方のサーバーを同時起動（開発モード）
-npm run dev:both
+- **Progress Visibility**: Hard to track which agent is working on what
+- **Conflict Prevention**: Duplicate implementations and merge conflicts
+- **Optimal Parallelism**: Don't know the ideal number of agents to run simultaneously
+- **Task Coordination**: No central coordination between agents
 
-# 個別起動
-npm run dev              # MCPサーバーのみ
-npm run dev:frontend     # フロントエンドのみ
+## 💡 Solution Overview
+
+`mcp-collaborative-taskmap` acts as a **Multi-agent Control Point (MCP)** providing:
+
+1. **Central Progress Store**: Tracks completed/remaining tasks, assigned agents, and worktrees
+2. **Agent Sync Tools**: Coding agents push/pull status via MCP tool calls
+3. **Real-time Tracking**: PM agents and humans get one-shot visibility into entire development pipeline
+4. **Git Worktree Integration**: Natural integration with existing Git workflows
+
+## 🛠️ MCP Tools
+
+The server exposes these MCP tools for AI agents:
+
+### 🧠 `plan`
+- **Purpose**: Create/update master development plans optimized for maximum parallelism
+- **Users**: PM agents for master planning, coding agents for ticket creation
+- **Features**: Bulk plan updates, task redefinition, PR-based planning
+
+### 👤 `assign`
+- **Purpose**: Assign work to agents or enable self-assignment
+- **Users**: PM agents for assignment, coding agents for self-assignment
+- **Features**: Task assignment, responsibility delegation, autonomous task selection
+
+### 📊 `track`
+- **Purpose**: Monitor progress and analyze parallelization opportunities
+- **Users**: PM agents for status checks, coding agents for situational awareness
+- **Features**: Plan overview, parallel capacity analysis, task dependency mapping
+
+### 🔄 `progress`
+- **Purpose**: Update task status and content
+- **Users**: Coding agents for status updates, PM agents for plan adjustments
+- **Features**: Task state transitions, progress tracking
+
+### 🔍 `refinement`
+- **Purpose**: Elaborate and refine task details
+- **Users**: All agents for task clarification
+- **Features**: Acceptance criteria definition, task decomposition
+
+### 👀 `review`
+- **Purpose**: Manage code review process
+- **Users**: Coding agents for review requests, PM agents for review coordination
+- **Features**: Review status tracking, feedback integration
+
+### 🔀 `merge`
+- **Purpose**: Coordinate branch merging and integration
+- **Users**: All agents for merge coordination
+- **Features**: Merge conflict prevention, integration sequencing
+
+## 📋 Task Status Flow
+
+Tasks follow a strict PR-based lifecycle:
+
+```
+Investigation → InProgress → Review → Done
+     ↓              ↓           ↓
+   Blocked      Blocked     Blocked
+     ↓              ↓           ↓
+ Abandoned    Abandoned   Abandoned
 ```
 
-### ビルド
-
-```bash
-# 全体をビルド
-npm run build
-
-# 個別ビルド
-npm run build:frontend   # フロントエンドのみ
-```
-
-## 🏗️ プロジェクト構成
+## 🏗️ Project Structure
 
 ```
-mcp-worktree/
-├── src/                 # MCPサーバーのソースコード
-├── human-ui/           # Reactフロントエンド
+mcp-collaborative-taskmap/
+├── src/                    # MCP server source code
+│   ├── domain/            # Domain-driven design layers
+│   │   ├── command/       # Commands that produce events
+│   │   ├── read/          # Read models/projections
+│   │   └── term/          # Domain vocabulary
+│   ├── mcp/               # MCP tool implementations
+│   └── effect/            # Infrastructure layer
+├── human-ui/              # React frontend
 │   ├── src/
 │   ├── package.json
 │   └── ...
 ├── bin/
-│   └── start.js        # NPX起動スクリプト
-├── dist/               # ビルド済みMCPサーバー
+│   └── start.js          # NPX startup script
+├── dist/                 # Built MCP server
 └── package.json
 ```
 
-## 🏛️ アーキテクチャ
+## 🏛️ Architecture
 
 ```
 mcp-collaborative-taskmap
 ├── MCP Server (stdio)
-│   ├── Tool: plan - プラン作成・管理
-│   ├── Tool: track - 進捗追跡・並列実行分析
-│   ├── Tool: assign - ワークツリー割り当て
-│   ├── Tool: refinement - タスク詳細化
-│   ├── Tool: progress - 進捗更新
-│   ├── Tool: review - レビュー管理
-│   └── Tool: merge - マージ統合
+│   ├── Tool: plan - Plan creation & management
+│   ├── Tool: track - Progress tracking & parallel analysis
+│   ├── Tool: assign - Worktree assignment
+│   ├── Tool: refinement - Task elaboration
+│   ├── Tool: progress - Progress updates
+│   ├── Tool: review - Review management
+│   └── Tool: merge - Merge coordination
 │
 └── Express Server (port 3737)
-    ├── /api/health → ヘルスチェック
-    ├── /assets/* → React static files  
+    ├── /api/health → Health check
+    ├── /assets/* → React static files
     └── /* → index.html (SPA fallback)
 ```
 
-## 🛠️ 技術スタック
+## 🛠️ Tech Stack
 
-### MCPサーバー
+### MCP Server
 - TypeScript
 - Model Context Protocol SDK
 - Node.js
+- Neverthrow (Functional error handling)
+- Event-driven architecture
 
-### フロントエンド
-- React 18 (最新版)
+### Frontend
+- React 18
 - TypeScript
-- Vite (ビルドツール)
-- Jotai (状態管理)
-- Tailwind CSS (スタイリング)
-- Radix UI (UIコンポーネント)
+- Vite (Build tool)
+- Jotai (State management)
+- Tailwind CSS (Styling)
+- Radix UI (UI components)
 
-## 📝 開発
+## 📝 Development
 
-### 環境変数
+### Prerequisites
 
 ```bash
-# ポート設定（オプション）
-MCP_PORT=3737           # MCPサーバーのポート（デフォルト）
+# Install dependencies
+npm install
+cd human-ui && npm install
 ```
 
-### スクリプト
+### Development Scripts
 
-- `npm run dev` - MCPサーバー開発モード
-- `npm run dev:frontend` - フロントエンド開発モード  
-- `npm run dev:both` - 両方同時起動
-- `npm run build` - 全体ビルド
-- `npm run start` - 本番モードでMCPサーバー起動
-- `npm run test` - テスト実行
+```bash
+# Start both servers in development mode
+npm run dev:both
 
-## 📦 NPM配信
+# Individual startup
+npm run dev              # MCP server only
+npm run dev:frontend     # Frontend only
 
-このパッケージは `mcp-collaborative-taskmap` として配信され、以下のコマンドで利用できます：
+# Build
+npm run build           # Full build
+npm run build:frontend  # Frontend only
+
+# Testing & Quality
+npm run lint            # ESLint
+npm run typecheck       # TypeScript check
+npm run test            # Run tests
+```
+
+### Environment Variables
+
+```bash
+# Port configuration (optional)
+MCP_PORT=3737           # MCP server port (default)
+```
+
+## 🚀 Usage with AI Agents
+
+### Claude Code Integration
+
+Add to your Claude Code configuration:
+
+```json
+{
+  "mcpServers": {
+    "collaborative-taskmap": {
+      "command": "npx",
+      "args": ["mcp-collaborative-taskmap"]
+    }
+  }
+}
+```
+
+### Cursor Integration
+
+Configure in Cursor settings to use MCP tools for task coordination.
+
+### General MCP Client
+
+Any MCP-compatible client can connect via stdio:
 
 ```bash
 npx mcp-collaborative-taskmap
 ```
 
-## 🤝 貢献
+## 🔄 Git Worktree Workflow
 
-プルリクエストやイシューの報告を歓迎します。
+The system is designed to work seamlessly with Git worktrees for parallel development:
 
-## �� ライセンス
+```bash
+# Create dedicated worktree for each task
+git worktree add ../<task-dir> <branch-name>
+cd ../<task-dir> && claude
 
-MIT License 
+# Clean up when done
+git worktree remove ../<task-dir>
+```
+
+## 🎯 Domain-Driven Design
+
+The codebase follows strict DDD principles:
+
+- **Event-Centric**: Commands produce events, not side effects
+- **Functional**: Complete rejection of class-based OOP
+- **Ubiquitous Language**: Code as domain knowledge documentation
+- **Composition**: One business rule = one function
+
+## 📦 NPM Distribution
+
+Available as `mcp-collaborative-taskmap` on npm:
+
+```bash
+npx mcp-collaborative-taskmap
+```
+
+## 🤝 Contributing
+
+We welcome pull requests and issue reports. Please follow the existing code style and domain-driven design principles.
+
+### Development Guidelines
+
+- Use functional programming patterns
+- Follow the existing domain structure
+- Write tests for new functionality
+- Ensure TypeScript type safety
+
+## 📄 License
+
+MIT License - see LICENSE file for details.
+
+## 🔗 Related Projects
+
+- [Model Context Protocol](https://github.com/modelcontextprotocol/protocol)
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+- [Cursor](https://cursor.sh/)
+
+---
+
+**Built for the age of AI-assisted development** 🤖✨

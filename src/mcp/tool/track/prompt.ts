@@ -7,7 +7,7 @@ const baseDiagramInstructions = {
 
 const baseNextAction = `
 You MUST do the following step next:
-  1. Make the current status visible to users in a single diagram.
+  1. Create a single task map that clearly visualizes the dependencies and parallel execution of PR tasks..
   2. Act fully autonomously—keep asking yourself which tasks you can start right now.
   3. “If you see a task that’s ready to start, assign it to yourself.
 `;
