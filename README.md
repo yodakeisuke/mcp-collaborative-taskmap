@@ -1,16 +1,22 @@
 # MCP Collaborative TaskMap
 
-An MCP (Model Context Protocol) server combined with React frontend for collaborative task mapping and parallel development orchestration. Optimizes task mapping to maximize parallel execution across multiple AI coding agents working simultaneously on different feature branches.
+An MCP (Model Context Protocol) server for collaborative task mapping and parallel development orchestration. Optimizes task mapping to maximize parallel execution across multiple AI coding agents working simultaneously on different feature branches.
 
 ## ✨ Key Features
 
 - **⚡ Maximum Parallelization**: Task mapping optimized for maximum concurrent agent execution with dependency analysis
 - **🤖 Autonomous Task Management**: Agents autonomously identify tasks to work on, create their own worktrees, and merge upon completion
-- **🎯 Role-based Interventions**: PM-level oversight through Cursor, implementation-level work through Claude Code  
 - **🔒 Enforced Development Practices**: Mandatory refinement, self-review, and other standard developer workflows to ensure code quality
 
 ## 🚀 Quick Start
 ### Configure MCP Client
+
+claude code
+```
+claude mcp add collaborative-taskmap -s user npx mcp-collaborative-taskmap
+```
+
+cursor
 ```json
 {
   "mcpServers": {
