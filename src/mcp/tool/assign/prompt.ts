@@ -10,5 +10,6 @@ You have to do it!: \`
     git worktree add -b <your-branch-name> <current-directory>/<your-branch-name>
     cd worktrees/<your-branch-name>
 \`
+important!: The worktree must be created under the current directory due to security restrictions.
 3. Understand and refine the task, and then break it down into more detailed steps.
 `;
