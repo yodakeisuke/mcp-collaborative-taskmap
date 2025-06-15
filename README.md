@@ -10,17 +10,20 @@ An MCP (Model Context Protocol) server combined with React frontend for collabor
 - **🔒 Enforced Development Practices**: Mandatory refinement, self-review, and other standard developer workflows to ensure code quality
 
 ## 🚀 Quick Start
-
-### Instant Launch with NPX
-
-```bash
-npx mcp-collaborative-taskmap
+### Configure MCP Client
+```json
+{
+  "mcpServers": {
+    "collaborative-taskmap": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-collaborative-taskmap"
+      ]
+    }
+  }
+}
 ```
-
-This command launches:
-- **MCP Server**: stdio communication with Claude/AI agents
-- **Express Server**: React frontend delivery (port: 3737) *(planned feature - UI under development)*
-
 
 ## 🎯 What Problem Does This Solve?
 

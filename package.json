@@ -1,6 +1,6 @@
 {
   "name": "mcp-collaborative-taskmap",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "MCP server for collaborative task mapping and parallel development orchestration",
   "type": "module",
   "main": "dist/index.js",
