@@ -50,15 +50,15 @@ The server exposes these MCP tools for AI agents:
 - **Users**: PM agents for status checks, coding agents for situational awareness
 - **Features**: Plan overview, parallel capacity analysis, task dependency mapping
 
-### 🔄 `progress`
-- **Purpose**: Update task status and content
-- **Users**: Coding agents for status updates, PM agents for plan adjustments
-- **Features**: Task state transitions, progress tracking
-
 ### 🔍 `refinement`
 - **Purpose**: Elaborate and refine task details
 - **Users**: All agents for task clarification
 - **Features**: Acceptance criteria definition, task decomposition
+
+### 🔄 `progress`
+- **Purpose**: Update task status and content
+- **Users**: Coding agents for status updates, PM agents for plan adjustments
+- **Features**: Task state transitions, progress tracking
 
 ### 👀 `review`
 - **Purpose**: Manage code review process
