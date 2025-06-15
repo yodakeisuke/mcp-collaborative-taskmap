@@ -1,9 +1,13 @@
 # MCP Collaborative TaskMap
 
-[![npm version](https://badge.fury.io/js/mcp-collaborative-taskmap.svg)](https://badge.fury.io/js/mcp-collaborative-taskmap)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+An MCP (Model Context Protocol) server combined with React frontend for collaborative task mapping and parallel development orchestration. Optimizes task mapping to maximize parallel execution across multiple AI coding agents working simultaneously on different feature branches.
 
-An MCP (Model Context Protocol) server combined with React frontend for collaborative task mapping and parallel development orchestration. Designed for solo developers managing multiple AI coding agents working in parallel across different feature branches.
+## ✨ Key Features
+
+- **⚡ Maximum Parallelization**: Task mapping optimized for maximum concurrent agent execution with dependency analysis
+- **🤖 Autonomous Task Management**: Agents autonomously identify tasks to work on, create their own worktrees, and merge upon completion
+- **🎯 Role-based Interventions**: PM-level oversight through Cursor, implementation-level work through Claude Code  
+- **🔒 Enforced Development Practices**: Mandatory refinement, self-review, and other standard developer workflows to ensure code quality
 
 ## 🚀 Quick Start
 
@@ -17,15 +21,6 @@ This command launches:
 - **MCP Server**: stdio communication with Claude/AI agents
 - **Express Server**: React frontend delivery (port: 3737) *(planned feature - UI under development)*
 
-### Stop Servers
-
-```bash
-# Press Ctrl+C in terminal
-^C
-
-# Or force kill from another terminal
-pkill -f mcp-collaborative-taskmap
-```
 
 ## 🎯 What Problem Does This Solve?
 
@@ -35,15 +30,6 @@ When running multiple AI coding agents in parallel (Cursor, Claude Code, GPT-Dev
 - **Conflict Prevention**: Duplicate implementations and merge conflicts
 - **Optimal Parallelism**: Don't know the ideal number of agents to run simultaneously
 - **Task Coordination**: No central coordination between agents
-
-## 💡 Solution Overview
-
-`mcp-collaborative-taskmap` acts as a **Multi-agent Control Point (MCP)** providing:
-
-1. **Central Progress Store**: Tracks completed/remaining tasks, assigned agents, and worktrees
-2. **Agent Sync Tools**: Coding agents push/pull status via MCP tool calls
-3. **Real-time Tracking**: PM agents and humans get one-shot visibility into entire development pipeline
-4. **Git Worktree Integration**: Natural integration with existing Git workflows
 
 ## 🛠️ MCP Tools
 
@@ -96,180 +82,6 @@ Investigation → InProgress → Review → Done
  Abandoned    Abandoned   Abandoned
 ```
 
-## 🏗️ Project Structure
-
-```
-mcp-collaborative-taskmap/
-├── src/                    # MCP server source code
-│   ├── domain/            # Domain-driven design layers
-│   │   ├── command/       # Commands that produce events
-│   │   ├── read/          # Read models/projections
-│   │   └── term/          # Domain vocabulary
-│   ├── mcp/               # MCP tool implementations
-│   └── effect/            # Infrastructure layer
-├── human-ui/              # React frontend
-│   ├── src/
-│   ├── package.json
-│   └── ...
-├── bin/
-│   └── start.js          # NPX startup script
-├── dist/                 # Built MCP server
-└── package.json
-```
-
-## 🏛️ Architecture
-
-```
-mcp-collaborative-taskmap
-├── MCP Server (stdio)
-│   ├── Tool: plan - Plan creation & management
-│   ├── Tool: track - Progress tracking & parallel analysis
-│   ├── Tool: assign - Worktree assignment
-│   ├── Tool: refinement - Task elaboration
-│   ├── Tool: progress - Progress updates
-│   ├── Tool: review - Review management
-│   └── Tool: merge - Merge coordination
-│
-└── Express Server (port 3737)
-    ├── /api/health → Health check
-    ├── /assets/* → React static files
-    └── /* → index.html (SPA fallback)
-```
-
-## 🛠️ Tech Stack
-
-### MCP Server
-- TypeScript
-- Model Context Protocol SDK
-- Node.js
-- Neverthrow (Functional error handling)
-- Event-driven architecture
-
-### Frontend
-- React 18
-- TypeScript
-- Vite (Build tool)
-- Jotai (State management)
-- Tailwind CSS (Styling)
-- Radix UI (UI components)
-
-## 📝 Development
-
-### Prerequisites
-
-```bash
-# Install dependencies
-npm install
-cd human-ui && npm install
-```
-
-### Development Scripts
-
-```bash
-# Start both servers in development mode
-npm run dev:both
-
-# Individual startup
-npm run dev              # MCP server only
-npm run dev:frontend     # Frontend only
-
-# Build
-npm run build           # Full build
-npm run build:frontend  # Frontend only
-
-# Testing & Quality
-npm run lint            # ESLint
-npm run typecheck       # TypeScript check
-npm run test            # Run tests
-```
-
-### Environment Variables
-
-```bash
-# Port configuration (optional)
-MCP_PORT=3737           # MCP server port (default)
-```
-
-## 🚀 Usage with AI Agents
-
-### Claude Code Integration
-
-Add to your Claude Code configuration:
-
-```json
-{
-  "mcpServers": {
-    "collaborative-taskmap": {
-      "command": "npx",
-      "args": ["mcp-collaborative-taskmap"]
-    }
-  }
-}
-```
-
-### Cursor Integration
-
-Configure in Cursor settings to use MCP tools for task coordination.
-
-### General MCP Client
-
-Any MCP-compatible client can connect via stdio:
-
-```bash
-npx mcp-collaborative-taskmap
-```
-
-## 🔄 Git Worktree Workflow
-
-The system is designed to work seamlessly with Git worktrees for parallel development:
-
-```bash
-# Create dedicated worktree for each task
-git worktree add ../<task-dir> <branch-name>
-cd ../<task-dir> && claude
-
-# Clean up when done
-git worktree remove ../<task-dir>
-```
-
-## 🎯 Domain-Driven Design
-
-The codebase follows strict DDD principles:
-
-- **Event-Centric**: Commands produce events, not side effects
-- **Functional**: Complete rejection of class-based OOP
-- **Ubiquitous Language**: Code as domain knowledge documentation
-- **Composition**: One business rule = one function
-
-## 📦 NPM Distribution
-
-Available as `mcp-collaborative-taskmap` on npm:
-
-```bash
-npx mcp-collaborative-taskmap
-```
-
-## 🤝 Contributing
-
-We welcome pull requests and issue reports. Please follow the existing code style and domain-driven design principles.
-
-### Development Guidelines
-
-- Use functional programming patterns
-- Follow the existing domain structure
-- Write tests for new functionality
-- Ensure TypeScript type safety
-
 ## 📄 License
 
 MIT License - see LICENSE file for details.
-
-## 🔗 Related Projects
-
-- [Model Context Protocol](https://github.com/modelcontextprotocol/protocol)
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-- [Cursor](https://cursor.sh/)
-
----
-
-**Built for the age of AI-assisted development** 🤖✨
