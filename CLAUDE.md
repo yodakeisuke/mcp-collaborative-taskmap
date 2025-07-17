@@ -86,9 +86,6 @@ cd ../<task-dir> && claude
 git worktree remove ../<task-dir>
 ```
 
-## Front end design
-you MUST follow: 
-- .cursor/rules/frontend-design.mdc
 
 ## Use Scratchpad & Checklist Organization System
 ### Directory Structure
