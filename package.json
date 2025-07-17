@@ -1,7 +1,7 @@
 {
-  "name": "mcp-collaborative-taskmap",
-  "version": "0.0.3",
-  "description": "MCP server for collaborative task mapping and parallel development orchestration",
+  "name": "mcp-xxx",
+  "version": "0.0.1",
+  "description": "MCP server template",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -22,7 +22,7 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.12.1",
+    "@modelcontextprotocol/sdk": "1.15.1",
     "@types/uuid": "^10.0.0",
     "neverthrow": "^8.1.1",
     "uuid": "^11.1.0",
@@ -39,26 +39,6 @@
     "vitest": "^3.2.3"
   },
   "author": "yoda keisuke",
-  "homepage": "https://github.com/yodakeisuke/mcp-collaborative-taskmap#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/yodakeisuke/mcp-collaborative-taskmap.git"
-  },
-  "bugs": {
-    "url": "https://github.com/yodakeisuke/mcp-collaborative-taskmap/issues"
-  },
-  "keywords": [
-    "mcp",
-    "model-context-protocol",
-    "agent",
-    "ai",
-    "claude",
-    "cursor",
-    "task-management",
-    "parallel-development",
-    "collaboration"
-  ],
-  "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
   }

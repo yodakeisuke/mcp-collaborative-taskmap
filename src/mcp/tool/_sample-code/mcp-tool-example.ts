@@ -57,7 +57,7 @@ export type PlanToolParameters = z.infer<typeof planToolZodSchema>;
 export const planParams = planToolZodSchema.shape; // SDK required format
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Response Schema - Output Optimization for AI
+// Response Schema - Output Optimization for AI with Structured Output
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export type PlanToolResponse = {
@@ -93,6 +93,40 @@ export type PlanToolResponse = {
     }>;
   }>;
 };
+
+// Output schema for structured tool output (Zod schema for MCP validation)
+export const planOutputSchema = z.object({
+  id: z.string().describe("Unique identifier of the plan"),
+  name: z.string().describe("Name of the development plan"),
+  featureBranch: z.string().describe("Feature branch name"),
+  originWorktreePath: z.string().describe("Path to the origin worktree"),
+  evolvingPRDPath: z.string().describe("Path to the evolving PRD document"),
+  evolvingDesignDocPath: z.string().describe("Path to the evolving design document"),
+  description: z.string().optional().describe("Optional description of the overall plan"),
+  lines: z.array(z.object({
+    id: z.string().describe("Line identifier"),
+    name: z.string().describe("Line name"),
+    tasks: z.array(z.object({
+      id: z.string().describe("Task identifier"),
+      title: z.string().describe("Task title"),
+      description: z.string().describe("Task description"),
+      worktree: z.string().describe("Task worktree path"),
+      status: z.string().describe("Task status"),
+      dependencies: z.array(z.string()).describe("Task dependencies"),
+      acceptanceCriteria: z.array(z.object({
+        id: z.string().describe("Criterion identifier"),
+        scenario: z.string().describe("Scenario description"),
+        given: z.array(z.string()).describe("Given conditions"),
+        when: z.array(z.string()).describe("When actions"),
+        then: z.array(z.string()).describe("Then expectations"),
+        isCompleted: z.boolean().describe("Completion status"),
+        createdAt: z.string().describe("Creation timestamp")
+      })).describe("Acceptance criteria in Given-When-Then format"),
+      definitionOfReady: z.array(z.string()).describe("Definition of Ready checklist items"),
+      assignedWorktree: z.string().optional().describe("Assigned worktree path")
+    })).describe("Tasks in this execution line")
+  })).describe("Execution lines containing organized tasks")
+}).describe("Plan structure with execution lines and tasks");
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Domain Types - Mock domain types for this example
@@ -367,8 +401,11 @@ export const planEntryPoint = (args: PlanToolParameters): Promise<CallToolResult
             // Step 4: Transform to API response
             const response = planViewToResponse(planView);
             
-            // Step 5: Combine guidance with data
-            return [nextAction, JSON.stringify(response, null, 2)] as const;
+            // Step 5: Combine guidance with structured data
+            return { 
+              messages: [nextAction, JSON.stringify(response, null, 2)] as const,
+              structuredData: response
+            };
           }),
           error => ({ 
             type: 'ViewError' as const, 
@@ -377,8 +414,8 @@ export const planEntryPoint = (args: PlanToolParameters): Promise<CallToolResult
         )
       )
       .match(
-        // Success: Return formatted response
-        messages => toCallToolResult([...messages], false),
+        // Success: Return structured response with both text and structured data
+        result => toStructuredCallToolResult([...result.messages], result.structuredData, false),
         // Error: Return error message
         error => toCallToolResult([`Failed to create plan: ${error.message}`], true)
       ),
@@ -388,7 +425,7 @@ export const planEntryPoint = (args: PlanToolParameters): Promise<CallToolResult
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Utility Functions
+// Utility Functions - Support for Structured Output
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export const toCallToolResult = (
@@ -403,14 +440,30 @@ export const toCallToolResult = (
   };
 };
 
+// Structured output utility for MCP tools with outputSchema
+export const toStructuredCallToolResult = (
+  messages: string[],
+  structuredContent: any,
+  isError: boolean,
+): CallToolResult => {
+  return {
+    content: messages.map(message =>
+      ({ type: "text" as const, text: message })
+    ),
+    structuredContent,
+    isError,
+  };
+};
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Tool Definition - MCP Tool Interface
+// Tool Definition - MCP Tool Interface with Structured Output
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export const planTool = {
   name: 'plan',
   description: toolDescription,
   parameters: planParams,
+  outputSchema: planOutputSchema,  // Enable structured output validation
   handler: planEntryPoint,
 };
 
@@ -469,5 +522,22 @@ const toolResult = await planTool.handler({
 });
 
 // The tool returns structured guidance and data for the AI agent
+// Response contains both human-readable text and structured data:
 console.log(toolResult);
+// {
+//   content: [
+//     { type: "text", text: "You MUST do the following step next:..." },
+//     { type: "text", text: "{\n  \"id\": \"plan-123\",\n  \"name\": \"User Authentication Feature\",\n  ..." }
+//   ],
+//   structuredContent: {
+//     id: "plan-123",
+//     name: "User Authentication Feature",
+//     featureBranch: "feature/user-auth",
+//     lines: [
+//       { id: "line-0", name: "feature/auth-001", tasks: [...] },
+//       { id: "line-1", name: "feature/auth-002", tasks: [...] }
+//     ]
+//   },
+//   isError: false
+// }
 */
